@@ -169,12 +169,12 @@ class CreatorRepository {
     }
 
     return CreatorDashboardResponse(
-      totalViews: _asInt(json['totalViews']),
-      totalSubscribers: _asInt(json['totalSubscribers']),
-      totalLikes: _asInt(json['totalLikes']),
-      totalRevenue: _asDouble(json['totalRevenue']),
-      series: seriesList,
-      recentEpisodes: recentList,
+      views: _asInt(json['totalViews']),
+      watchTimeSeconds: _asInt(json['watchTimeSeconds'] ?? 0),
+      earnings: _asDouble(json['totalRevenue'] ?? 0.0),
+      totalEpisodes: _asInt(json['totalEpisodes'] ?? 0),
+      totalSeries: _asInt(json['totalSeries'] ?? 0),
+      averageRating: _asDouble(json['averageRating'] ?? 0.0),
     );
   }
 

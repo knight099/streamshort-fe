@@ -10,6 +10,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'features/creator/presentation/screens/creator_onboarding_screen.dart';
 import 'features/creator/data/models/creator_models.dart';
+import 'features/content/presentation/screens/series_detail_screen.dart';
 
 import 'core/config/environment.dart';
 
@@ -1075,8 +1076,8 @@ class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen>
                         Expanded(
                           child: _buildCreatorStat(
                             context,
-                            'Subscribers',
-                            '${(_dashboardData!.totalSeries}',
+                            'Total Series',
+                            '${_dashboardData!.totalSeries}',
                             Icons.people,
                           ),
                         ),
@@ -1088,8 +1089,8 @@ class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen>
                         Expanded(
                           child: _buildCreatorStat(
                             context,
-                            'Total Likes',
-                            '${(_dashboardData!.totalEpisodes}',
+                            'Total Episodes',
+                            '${_dashboardData!.totalEpisodes}',
                             Icons.favorite,
                           ),
                         ),
@@ -1621,98 +1622,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Filters
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                // Search Bar
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search series...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Theme.of(context).colorScheme.surface,
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              _onSearchChanged('');
-                            },
-                          )
-                        : null,
-                  ),
-                  onChanged: _onSearchChanged,
-                  onSubmitted: _onSearchChanged,
-                  textInputAction: TextInputAction.search,
-                ),
-                const SizedBox(height: 16),
-                
-                // Category and Language Filters
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedCategory,
-                        decoration: InputDecoration(
-                          labelText: 'Category',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surface,
-                          prefixIcon: const Icon(Icons.category),
-                        ),
-                        items: _categories.map((category) {
-                          return DropdownMenuItem(
-                            value: category,
-                            child: Text(category),
-                          );
-                        }).toList(),
-                        onChanged: _onCategoryChanged,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedLanguage,
-                        decoration: InputDecoration(
-                          labelText: 'Language',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surface,
-                          prefixIcon: const Icon(Icons.language),
-                        ),
-                        items: _languages.map((language) {
-                          return DropdownMenuItem(
-                            value: language,
-                            child: Text(language),
-                          );
-                        }).toList(),
-                        onChanged: _onLanguageChanged,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Content
-          Expanded(
-            child: _buildContentFromState(contentState),
-          ),
-        ],
-      ),
+      body: _buildContentFromState(contentState),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           _showEnvironmentDialog(context);
@@ -1775,7 +1685,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onRefresh: () async {
           await ref.read(contentNotifierProvider.notifier).refreshContent();
         },
-        child: _buildContentList(contentState.series, contentState.hasMore),
+        child: _buildHome(contentState.series),
       );
     } else if (contentState is ContentError) {
       return Center(
@@ -2025,6 +1935,253 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Hotstar-style home layout
+  Widget _buildHome(List<Series> allSeries) {
+    // Build sections
+    final List<Series> featured = List<Series>.from(allSeries)
+      ..sort((a, b) => (b.viewCount).compareTo(a.viewCount));
+    final List<Series> trending = featured.take(10).toList();
+
+    final List<Series> topRated = List<Series>.from(allSeries)
+      ..sort((a, b) => (b.rating).compareTo(a.rating));
+
+    final List<Series> newReleases = List<Series>.from(allSeries)
+      ..sort((a, b) => (b.createdAt).compareTo(a.createdAt));
+
+    final Map<String, List<Series>> byCategory = <String, List<Series>>{};
+    for (final s in allSeries) {
+      byCategory.putIfAbsent(s.category, () => <Series>[]).add(s);
+    }
+
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(child: SizedBox(height: 12)),
+        if (featured.isNotEmpty)
+          SliverToBoxAdapter(
+            child: _buildHeroCarousel(featured.take(5).toList()),
+          ),
+        if (trending.isNotEmpty)
+          SliverToBoxAdapter(
+            child: _buildRailSection('Trending Now', trending),
+          ),
+        if (topRated.isNotEmpty)
+          SliverToBoxAdapter(
+            child: _buildRailSection('Top Rated', topRated.take(10).toList()),
+          ),
+        if (newReleases.isNotEmpty)
+          SliverToBoxAdapter(
+            child: _buildRailSection('New Releases', newReleases.take(10).toList()),
+          ),
+        for (final entry in byCategory.entries)
+          if (entry.value.isNotEmpty)
+            SliverToBoxAdapter(
+              child: _buildRailSection(entry.key, entry.value),
+            ),
+        SliverToBoxAdapter(child: SizedBox(height: 24)),
+      ],
+    );
+  }
+
+  Widget _buildHeroCarousel(List<Series> featured) {
+    return SizedBox(
+      height: 220,
+      child: PageView.builder(
+        controller: PageController(viewportFraction: 0.92),
+        itemCount: featured.length,
+        itemBuilder: (context, index) {
+          final s = featured[index];
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SeriesDetailScreen(seriesId: s.id),
+                  ),
+                );
+              },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CachedNetworkImage(
+                      imageUrl: s.banner,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Shimmer.fromColors(
+                        baseColor: Colors.grey.shade900,
+                        highlightColor: Colors.grey.shade800,
+                        child: Container(color: Colors.grey.shade900),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey.shade900,
+                        child: const Center(child: Icon(Icons.broken_image, color: Colors.white54)),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.6),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 16,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.title,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              shadows: [const Shadow(offset: Offset(0, 1), blurRadius: 2)],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            s.synopsis,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => SeriesDetailScreen(seriesId: s.id),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.play_arrow),
+                                label: const Text('Watch'),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton.icon(
+                                onPressed: () {},
+                                icon: const Icon(Icons.info_outline),
+                                label: const Text('More Info'),
+                                style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRailSection(String title, List<Series> items) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 200,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final s = items[index];
+                return _buildPosterCard(s);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPosterCard(Series s) {
+    return SizedBox(
+      width: 140,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SeriesDetailScreen(seriesId: s.id),
+            ),
+          );
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: s.thumbnail,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Shimmer.fromColors(
+                    baseColor: Colors.grey.shade900,
+                    highlightColor: Colors.grey.shade800,
+                    child: Container(color: Colors.grey.shade900),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: Colors.grey.shade900,
+                    child: const Center(child: Icon(Icons.broken_image, color: Colors.white54)),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              s.title,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                const Icon(Icons.star, size: 14, color: Colors.amber),
+                const SizedBox(width: 2),
+                Text(s.rating.toStringAsFixed(1), style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
