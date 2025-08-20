@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:streamshort/core/theme.dart';
 import 'package:streamshort/features/content/data/models/content_models.dart';
 
@@ -23,19 +25,22 @@ class SeriesCard extends StatelessWidget {
               child: AspectRatio(
                 aspectRatio: 16 / 9,
                 child: series.thumbnailUrl != null
-                    ? Image.network(
-                        series.thumbnailUrl!,
+                    ? CachedNetworkImage(
+                        imageUrl: series.thumbnailUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey[300],
-                            child: const Icon(
-                              Icons.video_library_outlined,
-                              size: 48,
-                              color: Colors.grey,
-                            ),
-                          );
-                        },
+                        placeholder: (context, url) => Shimmer.fromColors(
+                          baseColor: Colors.grey.shade300,
+                          highlightColor: Colors.grey.shade100,
+                          child: Container(color: Colors.grey.shade300),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.video_library_outlined,
+                            size: 48,
+                            color: Colors.grey,
+                          ),
+                        ),
                       )
                     : Container(
                         color: Colors.grey[300],

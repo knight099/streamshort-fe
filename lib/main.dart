@@ -2,9 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/providers.dart';
+import 'core/theme.dart';
 import 'features/auth/presentation/providers/auth_providers.dart';
 import 'features/content/presentation/providers/content_providers.dart';
 import 'core/api/api_client.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
+import 'features/creator/presentation/screens/creator_onboarding_screen.dart';
+import 'features/creator/data/models/creator_models.dart';
 
 import 'core/config/environment.dart';
 
@@ -24,19 +29,20 @@ class StreamshortApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+    
     return MaterialApp(
       title: 'Streamshort',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6366F1),
-        ),
-      ),
+      themeMode: themeMode,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       home: const LoginScreen(),
     );
   }
 }
+
+// Router-based app shell is in core/app.dart. Keep demo screens below.
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -457,18 +463,21 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       child: _user?.avatar != null
                           ? ClipOval(
-                              child: Image.network(
-                                _user!.avatar!,
+                              child: CachedNetworkImage(
+                                imageUrl: _user!.avatar!,
                                 width: 80,
                                 height: 80,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.person,
-                                    size: 40,
-                                    color: Colors.white,
-                                  );
-                                },
+                                placeholder: (context, url) => Shimmer.fromColors(
+                                  baseColor: Colors.grey.shade800,
+                                  highlightColor: Colors.grey.shade700,
+                                  child: Container(width: 80, height: 80, color: Colors.grey.shade800),
+                                ),
+                                errorWidget: (context, url, error) => const Icon(
+                                  Icons.person,
+                                  size: 40,
+                                  color: Colors.white,
+                                ),
                               ),
                             )
                           : const Icon(
@@ -620,6 +629,19 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
               ),
             ),
             const SizedBox(height: 8),
+            _buildActionButton(
+              context,
+              'Become a Creator',
+              Icons.star_border,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CreatorOnboardingScreen(),
+                  ),
+                );
+              },
+            ),
             _buildActionButton(
               context,
               'Creator Profile',
@@ -959,7 +981,8 @@ class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen>
       });
 
       final repo = ref.read(creatorRepositoryProvider);
-      final data = await repo.getCreatorDashboard();
+      final accessToken = ref.read(accessTokenProvider);
+      final data = await repo.getCreatorDashboard(accessToken: accessToken);
 
       setState(() {
         _dashboardData = data;
@@ -1045,7 +1068,7 @@ class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen>
                           child: _buildCreatorStat(
                             context,
                             'Total Views',
-                            '${(_dashboardData!.totalViews / 1000).toStringAsFixed(1)}K',
+                            '${(_dashboardData!.views / 1000).toStringAsFixed(1)}K',
                             Icons.visibility,
                           ),
                         ),
@@ -1053,7 +1076,7 @@ class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen>
                           child: _buildCreatorStat(
                             context,
                             'Subscribers',
-                            '${(_dashboardData!.totalSubscribers / 1000).toStringAsFixed(1)}K',
+                            '${(_dashboardData!.totalSeries}',
                             Icons.people,
                           ),
                         ),
@@ -1066,7 +1089,7 @@ class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen>
                           child: _buildCreatorStat(
                             context,
                             'Total Likes',
-                            '${(_dashboardData!.totalLikes / 1000).toStringAsFixed(1)}K',
+                            '${(_dashboardData!.totalEpisodes}',
                             Icons.favorite,
                           ),
                         ),
@@ -1074,7 +1097,7 @@ class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen>
                           child: _buildCreatorStat(
                             context,
                             'Revenue',
-                            '\$${_dashboardData!.totalRevenue.toStringAsFixed(1)}K',
+                            '${_dashboardData!.earningsFormatted}',
                             Icons.attach_money,
                           ),
                         ),
@@ -1099,7 +1122,7 @@ class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen>
               'My Series',
               'Manage your video series',
               Icons.video_library,
-              '${_dashboardData!.series.length} series',
+              '${_dashboardData!.totalSeries} series',
             ),
             _buildContentCard(
               context,
@@ -1251,7 +1274,8 @@ class _CreatorProfileScreenState extends ConsumerState<CreatorProfileScreen> {
         _error = null;
       });
       final repo = ref.read(creatorRepositoryProvider);
-      final prof = await repo.getCreatorProfile();
+      final accessToken = ref.read(accessTokenProvider);
+      final prof = await repo.getCreatorProfile(accessToken: accessToken);
       setState(() {
         _profile = prof;
         _isLoading = false;
@@ -1313,12 +1337,12 @@ class _CreatorProfileScreenState extends ConsumerState<CreatorProfileScreen> {
                               setModalState(() => saving = true);
                               try {
                                 final repo = ref.read(creatorRepositoryProvider);
+                                final accessToken = ref.read(accessTokenProvider);
                                 await repo.onboardCreator(
-                                  name: nameCtrl.text.trim(),
-                                  email: emailCtrl.text.trim(),
+                                  displayName: nameCtrl.text.trim(),
                                   bio: bioCtrl.text.trim().isEmpty ? null : bioCtrl.text.trim(),
-                                  website: websiteCtrl.text.trim().isEmpty ? null : websiteCtrl.text.trim(),
-                                  socialLinks: socialsCtrl.text.trim().isEmpty ? null : socialsCtrl.text.trim(),
+                                  kycDocumentS3Path: 's3://demo/kyc_doc_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                                  accessToken: accessToken,
                                 );
                                 if (mounted) {
                                   Navigator.pop(ctx);
@@ -1421,15 +1445,15 @@ class _CreatorProfileScreenState extends ConsumerState<CreatorProfileScreen> {
               children: [
                 CircleAvatar(
                   radius: 32,
-                  child: Text(_profile!.name.isNotEmpty ? _profile!.name.substring(0, 1).toUpperCase() : '?'),
+                  child: Text(_profile!.displayName.isNotEmpty ? _profile!.displayName.substring(0, 1).toUpperCase() : '?'),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_profile!.name, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                      Text(_profile!.email, style: Theme.of(context).textTheme.bodyMedium),
+                      Text(_profile!.displayName, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      Text(_profile!.kycStatus, style: Theme.of(context).textTheme.bodyMedium),
                     ],
                   ),
                 ),
@@ -1442,17 +1466,7 @@ class _CreatorProfileScreenState extends ConsumerState<CreatorProfileScreen> {
               Text(_profile!.bio!),
               const SizedBox(height: 16),
             ],
-            if (_profile!.website != null && _profile!.website!.isNotEmpty) ...[
-              Text('Website', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(_profile!.website!),
-              const SizedBox(height: 16),
-            ],
-            if (_profile!.socialLinks != null && _profile!.socialLinks!.isNotEmpty) ...[
-              Text('Social', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(_profile!.socialLinks!),
-            ],
+
           ],
         ),
       ),
@@ -1856,16 +1870,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             width: double.infinity,
             decoration: BoxDecoration(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              image: DecorationImage(
-                image: NetworkImage(series.thumbnail),
-                fit: BoxFit.cover,
-                onError: (exception, stackTrace) {
-                  // Handle image loading error
-                },
-              ),
+              image: null,
             ),
             child: Stack(
               children: [
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                    child: CachedNetworkImage(
+                      imageUrl: series.thumbnail,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Shimmer.fromColors(
+                        baseColor: Colors.grey.shade900,
+                        highlightColor: Colors.grey.shade800,
+                        child: Container(color: Colors.grey.shade900),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey.shade900,
+                        child: const Center(
+                          child: Icon(Icons.broken_image, color: Colors.white54),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 Positioned(
                   top: 8,
                   right: 8,

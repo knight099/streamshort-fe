@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 import 'package:json_annotation/json_annotation.dart';
 import '../config/environment.dart';
+import '../../features/creator/data/models/creator_models.dart';
 
 part 'api_client.g.dart';
 
@@ -46,8 +47,8 @@ abstract class ApiClient {
   @GET('api/creators/profile')
   Future<CreatorProfile> getCreatorProfile();
 
-  @GET('api/creators/dashboard')
-  Future<CreatorDashboardResponse> getCreatorDashboard();
+  @GET('api/creators/{id}/dashboard')
+  Future<CreatorDashboardResponse> getCreatorDashboard(@Path('id') String creatorId);
 
   // User endpoints
   @GET('api/profile')
@@ -292,77 +293,20 @@ class SeriesListResponse {
 }
 
 // Creator Models
-@JsonSerializable()
-class CreatorOnboardRequest {
-  final String name;
-  final String email;
-  final String? bio;
-  final String? website;
-  final String? socialLinks;
 
-  CreatorOnboardRequest({
-    required this.name,
-    required this.email,
-    this.bio,
-    this.website,
-    this.socialLinks,
-  });
 
-  factory CreatorOnboardRequest.fromJson(Map<String, dynamic> json) => _$CreatorOnboardRequestFromJson(json);
-  Map<String, dynamic> toJson() => _$CreatorOnboardRequestToJson(this);
-}
 
-@JsonSerializable()
-class CreatorProfile {
-  final String id;
-  final String userId;
-  final String name;
-  final String email;
-  final String? bio;
-  final String? website;
-  final String? socialLinks;
-  final String status;
-  final DateTime createdAt;
-  final DateTime updatedAt;
 
-  CreatorProfile({
-    required this.id,
-    required this.userId,
-    required this.name,
-    required this.email,
-    this.bio,
-    this.website,
-    this.socialLinks,
-    required this.status,
-    required this.createdAt,
-    required this.updatedAt,
-  });
 
-  factory CreatorProfile.fromJson(Map<String, dynamic> json) => _$CreatorProfileFromJson(json);
-  Map<String, dynamic> toJson() => _$CreatorProfileToJson(this);
-}
 
-@JsonSerializable()
-class CreatorDashboardResponse {
-  final int totalViews;
-  final int totalSubscribers;
-  final int totalLikes;
-  final double totalRevenue;
-  final List<Series> series;
-  final List<Episode> recentEpisodes;
 
-  CreatorDashboardResponse({
-    required this.totalViews,
-    required this.totalSubscribers,
-    required this.totalLikes,
-    required this.totalRevenue,
-    required this.series,
-    required this.recentEpisodes,
-  });
 
-  factory CreatorDashboardResponse.fromJson(Map<String, dynamic> json) => _$CreatorDashboardResponseFromJson(json);
-  Map<String, dynamic> toJson() => _$CreatorDashboardResponseToJson(this);
-}
+
+
+
+
+
+
 
 // Engagement Models
 @JsonSerializable()

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
+final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.dark);
 
 class AppTheme {
   // Brand Colors
@@ -18,9 +18,9 @@ class AppTheme {
   static const Color warningColor = Color(0xFFF59E0B);
   
   // Dark Theme Colors
-  static const Color darkSurfaceColor = Color(0xFF1E293B);
-  static const Color darkBackgroundColor = Color(0xFF0F172A);
-  static const Color darkCardColor = Color(0xFF334155);
+  static const Color darkSurfaceColor = Color(0xFF111111);
+  static const Color darkBackgroundColor = Color(0xFF0B0B0B);
+  static const Color darkCardColor = Color(0xFF161616);
 
   static ThemeData get lightTheme {
     return ThemeData(
@@ -38,7 +38,7 @@ class AppTheme {
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.black87,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -93,7 +93,7 @@ class AppTheme {
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 4,
         color: darkCardColor,
         shape: RoundedRectangleBorder(

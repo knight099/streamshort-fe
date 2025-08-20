@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../../../../core/api/api_client.dart';
+import '../models/creator_models.dart';
 
 class CreatorRepository {
   final ApiClient _apiClient;
@@ -7,21 +8,24 @@ class CreatorRepository {
 
   CreatorRepository(this._apiClient, this._dio);
 
-  Future<CreatorProfile> onboardCreator({
-    required String name,
-    required String email,
+  Future<CreatorProfile> onboardCreator({ 
+    required String displayName, 
+    required String kycDocumentS3Path, 
     String? bio,
-    String? website,
-    String? socialLinks,
+    String? accessToken,
   }) async {
     try {
       final request = CreatorOnboardRequest(
-        name: name,
-        email: email,
+        displayName: displayName,
         bio: bio,
-        website: website,
-        socialLinks: socialLinks,
+        kycDocumentS3Path: kycDocumentS3Path,
       );
+      
+      // Add Authorization header if token is provided
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+      
       final response = await _apiClient.onboardCreator(request);
       return response;
     } on DioException catch (e) {
@@ -31,10 +35,15 @@ class CreatorRepository {
     }
   }
 
-  Future<CreatorProfile> getCreatorProfile() async {
+  Future<CreatorProfile> getCreatorProfile({String? accessToken}) async {
     try {
+      // Add Authorization header if token is provided
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+      
       // Use Dio directly to gracefully handle non-standard payloads
-      final resp = await _dio.get('creators/profile');
+      final resp = await _dio.get('api/creators/profile');
       if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) {
         final data = resp.data;
         if (data is Map) {
@@ -52,9 +61,25 @@ class CreatorRepository {
     }
   }
 
-  Future<CreatorDashboardResponse> getCreatorDashboard() async {
+  Future<CreatorDashboardResponse> getCreatorDashboard({String? creatorId, String? accessToken}) async {
     try {
-      final resp = await _dio.get('creators/dashboard');
+      // Add Authorization header if token is provided
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+      
+      // If no creatorId provided, try to get it from the current user's creator profile
+      String dashboardCreatorId = creatorId ?? '';
+      if (dashboardCreatorId.isEmpty) {
+        try {
+          final profile = await getCreatorProfile(accessToken: accessToken);
+          dashboardCreatorId = profile.id;
+        } catch (e) {
+          throw Exception('Creator ID required. Please complete creator onboarding first.');
+        }
+      }
+
+      final resp = await _dio.get('api/creators/$dashboardCreatorId/dashboard');
       if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) {
         final data = resp.data;
         if (data is Map) {
@@ -109,15 +134,14 @@ class CreatorRepository {
   CreatorProfile _parseCreatorProfile(Map<String, dynamic> json) {
     return CreatorProfile(
       id: _asString(json['id'], def: ''),
-      userId: _asString(json['userId'], def: ''),
-      name: _asString(json['name'], def: ''),
-      email: _asString(json['email'], def: ''),
+      userId: _asString(json['user_id'], def: ''),
+      displayName: _asString(json['display_name'], def: ''),
       bio: json['bio'] == null ? null : _asString(json['bio']),
-      website: json['website'] == null ? null : _asString(json['website']),
-      socialLinks: json['socialLinks'] == null ? null : _asString(json['socialLinks']),
-      status: _asString(json['status'], def: ''),
-      createdAt: _asDate(json['createdAt']),
-      updatedAt: _asDate(json['updatedAt']),
+      kycStatus: _asString(json['kyc_status'], def: 'pending'),
+      payoutDetails: json['payout_details'],
+      rating: json['rating'] == null ? null : _asDouble(json['rating']),
+      createdAt: _asDate(json['created_at']),
+      updatedAt: json['updated_at'] == null ? null : _asDate(json['updated_at']),
     );
   }
 

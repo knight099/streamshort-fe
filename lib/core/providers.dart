@@ -17,13 +17,18 @@ final dioProvider = Provider<Dio>((ref) {
   dio.options.receiveTimeout = const Duration(seconds: 30);
   dio.options.sendTimeout = const Duration(seconds: 30);
   dio.options.baseUrl = EnvironmentConfig.apiBaseUrl;
+  dio.options.receiveDataWhenStatusError = true;
   
   // Add interceptors for logging, auth, etc.
-  dio.interceptors.add(LogInterceptor(
-    requestBody: true,
-    responseBody: true,
-    logPrint: (obj) => print(obj),
-  ));
+  if (EnvironmentConfig.enableLogging) {
+    dio.interceptors.add(LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      logPrint: (obj) => print(obj),
+    ));
+  }
+  
+
   
   return dio;
 });

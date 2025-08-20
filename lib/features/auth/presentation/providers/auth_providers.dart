@@ -135,3 +135,11 @@ final isAuthenticatedProvider = Provider<bool>((ref) {
   final authState = ref.watch(authNotifierProvider);
   return authState is AuthAuthenticated;
 });
+
+final accessTokenProvider = Provider<String?>((ref) {
+  final authState = ref.watch(authNotifierProvider);
+  if (authState is AuthAuthenticated) {
+    return authState.accessToken;
+  }
+  return null;
+});
