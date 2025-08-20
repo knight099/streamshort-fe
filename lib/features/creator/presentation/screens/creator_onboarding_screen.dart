@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -20,7 +21,7 @@ class _CreatorOnboardingScreenState extends ConsumerState<CreatorOnboardingScree
   final _displayNameController = TextEditingController();
   final _bioController = TextEditingController();
   
-  File? _kycDocument;
+  Uint8List? _kycDocumentBytes;
   String? _kycDocumentName;
   bool _isSubmitting = false;
   int _currentStep = 0;
@@ -289,7 +290,7 @@ class _CreatorOnboardingScreenState extends ConsumerState<CreatorOnboardingScree
 
           const SizedBox(height: 32),
 
-          if (_kycDocument == null) ...[
+          if (_kycDocumentBytes == null) ...[
             Row(
               children: [
                 Expanded(
@@ -360,7 +361,7 @@ class _CreatorOnboardingScreenState extends ConsumerState<CreatorOnboardingScree
               IconButton(
                 onPressed: () {
                   setState(() {
-                    _kycDocument = null;
+                    _kycDocumentBytes = null;
                     _kycDocumentName = null;
                   });
                 },
@@ -369,7 +370,7 @@ class _CreatorOnboardingScreenState extends ConsumerState<CreatorOnboardingScree
             ],
           ),
           
-          if (_kycDocument != null && _kycDocumentName?.toLowerCase().endsWith('.pdf') != true) ...[
+          if (_kycDocumentBytes != null && _kycDocumentName?.toLowerCase().endsWith('.pdf') != true) ...[
             const SizedBox(height: 16),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -598,7 +599,7 @@ class _CreatorOnboardingScreenState extends ConsumerState<CreatorOnboardingScree
       case 0:
         return _displayNameController.text.trim().isNotEmpty;
       case 1:
-        return _kycDocument != null;
+        return _kycDocumentBytes != null;
       case 2:
         return true;
       default:
@@ -612,13 +613,21 @@ class _CreatorOnboardingScreenState extends ConsumerState<CreatorOnboardingScree
         type: FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
         allowMultiple: false,
+        withData: true,
       );
 
-      if (result != null && result.files.single.path != null) {
-        setState(() {
-          _kycDocument = File(result.files.single.path!);
-          _kycDocumentName = result.files.single.name;
-        });
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.single;
+        Uint8List? bytes = file.bytes;
+        if (bytes == null && !kIsWeb && file.path != null) {
+          bytes = await XFile(file.path!).readAsBytes();
+        }
+        if (bytes != null) {
+          setState(() {
+            _kycDocumentBytes = bytes;
+            _kycDocumentName = file.name;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -643,8 +652,9 @@ class _CreatorOnboardingScreenState extends ConsumerState<CreatorOnboardingScree
       );
 
       if (image != null) {
+        final bytes = await image.readAsBytes();
         setState(() {
-          _kycDocument = File(image.path);
+          _kycDocumentBytes = bytes;
           _kycDocumentName = 'kyc_document_${DateTime.now().millisecondsSinceEpoch}.jpg';
         });
       }
@@ -661,7 +671,7 @@ class _CreatorOnboardingScreenState extends ConsumerState<CreatorOnboardingScree
   }
 
   Future<String> _uploadKycDocument() async {
-    if (_kycDocument == null) {
+    if (_kycDocumentBytes == null) {
       throw Exception('No KYC document selected');
     }
 
@@ -670,7 +680,7 @@ class _CreatorOnboardingScreenState extends ConsumerState<CreatorOnboardingScree
   }
 
   Future<void> _submitOnboarding() async {
-    if (!_formKey.currentState!.validate() || _kycDocument == null) {
+    if (!_formKey.currentState!.validate() || _kycDocumentBytes == null) {
       return;
     }
 

@@ -15,19 +15,40 @@ class CreatorRepository {
     String? accessToken,
   }) async {
     try {
-      final request = CreatorOnboardRequest(
-        displayName: displayName,
-        bio: bio,
-        kycDocumentS3Path: kycDocumentS3Path,
-      );
-      
-      // Add Authorization header if token is provided
-      if (accessToken != null && accessToken.isNotEmpty) {
-        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      // Ensure Authorization header is present (from arg or existing Dio state)
+      final headerToken = accessToken;
+      if (headerToken != null && headerToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $headerToken';
       }
-      
-      final response = await _apiClient.onboardCreator(request);
-      return response;
+      final existingAuth = _dio.options.headers['Authorization']?.toString();
+      final authHeader = (headerToken != null && headerToken.isNotEmpty)
+          ? 'Bearer $headerToken'
+          : (existingAuth != null && existingAuth.isNotEmpty ? existingAuth : null);
+
+      // Send snake_case body expected by backend
+      final resp = await _dio.post(
+        'api/creators/onboard',
+        data: {
+          'display_name': displayName,
+          'bio': bio,
+          'kyc_document_s3_path': kycDocumentS3Path,
+        },
+        options: Options(headers: {
+          if (authHeader != null) 'Authorization': authHeader,
+          'Content-Type': 'application/json',
+        }),
+      );
+
+      if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) {
+        final data = resp.data;
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data as Map);
+          return _parseCreatorProfile(map);
+        }
+        throw Exception('Unexpected response format');
+      }
+      final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to onboard creator';
+      throw Exception(msg.toString());
     } on DioException catch (e) {
       throw _handleError(e);
     } catch (e) {

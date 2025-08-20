@@ -7,6 +7,7 @@ import '../features/creator/data/repositories/creator_repository.dart';
 import '../features/profile/data/repositories/profile_repository.dart';
 import '../features/subscription/data/repositories/subscription_repository.dart';
 import 'config/environment.dart';
+import 'interceptors/auth_interceptor.dart';
 
 // Dio Provider
 final dioProvider = Provider<Dio>((ref) {
@@ -27,8 +28,9 @@ final dioProvider = Provider<Dio>((ref) {
       logPrint: (obj) => print(obj),
     ));
   }
+  // Auth interceptor to add Authorization header from auth state
+  dio.interceptors.add(AuthInterceptor(ref));
   
-
   
   return dio;
 });

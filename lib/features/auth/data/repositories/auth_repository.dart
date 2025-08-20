@@ -28,17 +28,35 @@ class AuthRepository {
 
   Future<TokenResponse> verifyOtp(String phone, String otp, String requestId) async {
     try {
-      final request = PhoneOtpVerifyRequest(
-        phone: phone,
-        otp: otp,
-        // requestId: requestId,
-      );
-      final response = await _apiClient.verifyOtp(request);
-      
-      // Store tokens securely
-      // You can use secure storage here
-      
-      return response;
+      // Normalize phone same as sendOtp: digits + country code (+91 default)
+      final digitsOnly = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+      final normalizedPhone = digitsOnly.startsWith('+') ? digitsOnly : '+91$digitsOnly';
+      // Use Dio directly to handle snake_case response keys
+      final resp = await _dio.post('auth/otp/verify', data: {
+        'phone': normalizedPhone,
+        'otp': otp,
+      });
+      if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) {
+        final data = resp.data is Map ? Map<String, dynamic>.from(resp.data as Map) : <String, dynamic>{};
+        final accessToken = (data['access_token'] ?? data['accessToken'] ?? '').toString();
+        final refreshToken = (data['refresh_token'] ?? data['refreshToken'] ?? '').toString();
+        if (accessToken.isNotEmpty) {
+          _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+        }
+        // Build a minimal user; real profile can be fetched later
+        final user = User(
+          id: data['user'] is Map && (data['user']['id']?.toString().isNotEmpty ?? false) ? data['user']['id'].toString() : '',
+          phone: normalizedPhone,
+          name: null,
+          email: null,
+          role: 'user',
+          avatar: null,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        return TokenResponse(accessToken: accessToken, refreshToken: refreshToken, user: user);
+      }
+      throw Exception('Failed to verify OTP: ${resp.statusCode}');
     } on DioException catch (e) {
       throw _handleError(e);
     } catch (e) {
@@ -50,6 +68,10 @@ class AuthRepository {
     try {
       final request = RefreshRequest(refreshToken: refreshToken);
       final response = await _apiClient.refreshToken(request);
+      // Update Dio Authorization header
+      if (response.accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer ${response.accessToken}';
+      }
       
       // Update stored tokens
       
