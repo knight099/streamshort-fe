@@ -5,17 +5,32 @@ part 'content_models.g.dart';
 @JsonSerializable()
 class Series {
   final String id;
+  @JsonKey(name: 'creator_id')
   final String creatorId;
   final String title;
   final String synopsis;
   final String language;
+  @JsonKey(name: 'category_tags')
   final List<String> categoryTags;
-  final String priceType; // free, subscription, one_time
+  @JsonKey(name: 'price_type')
+  final String priceType;
+  @JsonKey(name: 'price_amount')
   final double? priceAmount;
+  @JsonKey(name: 'thumbnail_url')
   final String? thumbnailUrl;
-  final String status; // draft, published
+  @JsonKey(name: 'banner_url')
+  final String? bannerUrl;
+  final String status;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
+  final List<Episode>? episodes;
+  @JsonKey(name: 'episode_count')
+  final int episodeCount;
+  @JsonKey(name: 'view_count')
+  final int viewCount;
+  final double rating;
 
   const Series({
     required this.id,
@@ -27,35 +42,50 @@ class Series {
     required this.priceType,
     this.priceAmount,
     this.thumbnailUrl,
+    this.bannerUrl,
     required this.status,
     required this.createdAt,
     this.updatedAt,
+    this.episodes,
+    required this.episodeCount,
+    required this.viewCount,
+    required this.rating,
   });
 
   factory Series.fromJson(Map<String, dynamic> json) => _$SeriesFromJson(json);
-
   Map<String, dynamic> toJson() => _$SeriesToJson(this);
 
-  bool get isFree => priceType == 'free';
-  bool get isSubscription => priceType == 'subscription';
-  bool get isOneTime => priceType == 'one_time';
   bool get isPublished => status == 'published';
+  bool get isFree => priceType == 'free';
+  String get category => categoryTags.isNotEmpty ? categoryTags[0] : 'Uncategorized';
+  String get thumbnail => thumbnailUrl ?? '';
+  String get banner => bannerUrl ?? '';
 }
 
 @JsonSerializable()
 class Episode {
   final String id;
+  @JsonKey(name: 'series_id')
   final String seriesId;
   final String title;
+  @JsonKey(name: 'episode_number')
   final int episodeNumber;
+  @JsonKey(name: 'duration_seconds')
   final int durationSeconds;
+  @JsonKey(name: 's3_master_path')
   final String? s3MasterPath;
+  @JsonKey(name: 'hls_manifest_url')
   final String? hlsManifestUrl;
+  @JsonKey(name: 'thumb_url')
   final String? thumbUrl;
+  @JsonKey(name: 'captions_url')
   final String? captionsUrl;
-  final String status; // pending_upload, queued_transcode, ready, published
+  final String status;
+  @JsonKey(name: 'published_at')
   final DateTime? publishedAt;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
 
   const Episode({
@@ -75,13 +105,9 @@ class Episode {
   });
 
   factory Episode.fromJson(Map<String, dynamic> json) => _$EpisodeFromJson(json);
-
   Map<String, dynamic> toJson() => _$EpisodeToJson(this);
 
-  bool get isReady => status == 'ready';
   bool get isPublished => status == 'published';
-  bool get hasVideo => hlsManifestUrl != null;
-  
   String get durationFormatted {
     final minutes = durationSeconds ~/ 60;
     final seconds = durationSeconds % 60;
@@ -94,105 +120,17 @@ class SeriesListResponse {
   final int total;
   final List<Series> items;
   final int page;
+  @JsonKey(name: 'per_page')
   final int perPage;
-  final bool hasNextPage;
-  final bool hasPreviousPage;
 
   const SeriesListResponse({
     required this.total,
     required this.items,
     required this.page,
     required this.perPage,
-    required this.hasNextPage,
-    required this.hasPreviousPage,
   });
 
   factory SeriesListResponse.fromJson(Map<String, dynamic> json) =>
       _$SeriesListResponseFromJson(json);
-
   Map<String, dynamic> toJson() => _$SeriesListResponseToJson(this);
-}
-
-@JsonSerializable()
-class UploadRequest {
-  final String filename;
-  final String contentType;
-  final int sizeBytes;
-  final Map<String, dynamic>? metadata;
-
-  const UploadRequest({
-    required this.filename,
-    required this.contentType,
-    required this.sizeBytes,
-    this.metadata,
-  });
-
-  factory UploadRequest.fromJson(Map<String, dynamic> json) =>
-      _$UploadRequestFromJson(json);
-
-  Map<String, dynamic> toJson() => _$UploadRequestToJson(this);
-}
-
-@JsonSerializable()
-class UploadUrlResponse {
-  final String uploadId;
-  final String presignedUrl;
-  final int expiresIn;
-  final Map<String, dynamic> uploadHeaders;
-
-  const UploadUrlResponse({
-    required this.uploadId,
-    required this.presignedUrl,
-    required this.expiresIn,
-    required this.uploadHeaders,
-  });
-
-  factory UploadUrlResponse.fromJson(Map<String, dynamic> json) =>
-      _$UploadUrlResponseFromJson(json);
-
-  Map<String, dynamic> toJson() => _$UploadUrlResponseToJson(this);
-}
-
-@JsonSerializable()
-class UploadNotifyRequest {
-  final String s3Path;
-  final int sizeBytes;
-
-  const UploadNotifyRequest({
-    required this.s3Path,
-    required this.sizeBytes,
-  });
-
-  factory UploadNotifyRequest.fromJson(Map<String, dynamic> json) =>
-      _$UploadNotifyRequestFromJson(json);
-
-  Map<String, dynamic> toJson() => _$UploadNotifyRequestToJson(this);
-}
-
-@JsonSerializable()
-class UploadNotifyResponse {
-  final String status;
-
-  const UploadNotifyResponse({required this.status});
-
-  factory UploadNotifyResponse.fromJson(Map<String, dynamic> json) =>
-      _$UploadNotifyResponseFromJson(json);
-
-  Map<String, dynamic> toJson() => _$UploadNotifyResponseToJson(this);
-}
-
-@JsonSerializable()
-class ManifestResponse {
-  final String manifestUrl;
-  final DateTime expiresAt;
-
-  const ManifestResponse({
-    required this.manifestUrl,
-    required this.expiresAt,
-  });
-
-  factory ManifestResponse.fromJson(Map<String, dynamic> json) =>
-      _$ManifestResponseFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ManifestResponseToJson(this);
 }

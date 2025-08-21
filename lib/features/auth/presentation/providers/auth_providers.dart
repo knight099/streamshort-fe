@@ -110,6 +110,31 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = const AuthUnauthenticated();
     }
   }
+
+  Future<void> updateUserRole(String newRole) async {
+    try {
+      if (state is AuthAuthenticated) {
+        final currentState = state as AuthAuthenticated;
+        final updatedUser = User(
+          id: currentState.user.id,
+          phone: currentState.user.phone,
+          displayName: currentState.user.displayName,
+          avatarUrl: currentState.user.avatarUrl,
+          role: newRole,
+          createdAt: currentState.user.createdAt,
+          lastLoginAt: currentState.user.lastLoginAt,
+        );
+        
+        state = AuthAuthenticated(
+          user: updatedUser,
+          accessToken: currentState.accessToken,
+          refreshToken: currentState.refreshToken,
+        );
+      }
+    } catch (e) {
+      // Handle error if needed
+    }
+  }
 }
 
 // Providers

@@ -23,13 +23,21 @@ class CreatorOnboardRequest {
 @JsonSerializable()
 class CreatorProfile {
   final String id;
+  @JsonKey(name: 'user_id')
   final String userId;
+  @JsonKey(name: 'display_name')
   final String displayName;
   final String? bio;
+  @JsonKey(name: 'kyc_status')
   final String kycStatus; // pending, verified, rejected
+  @JsonKey(name: 'kyc_document_s3_path')
+  final String? kycDocumentS3Path;
+  @JsonKey(name: 'payout_details')
   final Map<String, dynamic>? payoutDetails;
   final double? rating;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
 
   const CreatorProfile({
@@ -38,6 +46,7 @@ class CreatorProfile {
     required this.displayName,
     this.bio,
     required this.kycStatus,
+    this.kycDocumentS3Path,
     this.payoutDetails,
     this.rating,
     required this.createdAt,
@@ -59,17 +68,17 @@ class CreatorDashboardResponse {
   final int views;
   final int watchTimeSeconds;
   final double earnings;
-  final int totalEpisodes;
-  final int totalSeries;
-  final double averageRating;
+  final int? totalEpisodes;
+  final int? totalSeries;
+  final double? averageRating;
 
   const CreatorDashboardResponse({
     required this.views,
     required this.watchTimeSeconds,
     required this.earnings,
-    required this.totalEpisodes,
-    required this.totalSeries,
-    required this.averageRating,
+    this.totalEpisodes,
+    this.totalSeries,
+    this.averageRating,
   });
 
   factory CreatorDashboardResponse.fromJson(Map<String, dynamic> json) =>
@@ -87,6 +96,10 @@ class CreatorDashboardResponse {
   }
 
   String get earningsFormatted => '₹${earnings.toStringAsFixed(2)}';
+  
+  int get totalEpisodesSafe => totalEpisodes ?? 0;
+  int get totalSeriesSafe => totalSeries ?? 0;
+  double get averageRatingSafe => averageRating ?? 0.0;
 }
 
 // Series creation models
@@ -119,15 +132,38 @@ class CreateSeriesRequest {
 @JsonSerializable()
 class CreateSeriesResponse {
   final String id;
+  @JsonKey(name: 'creator_id')
+  final String creatorId;
   final String title;
+  final String synopsis;
+  final String language;
+  @JsonKey(name: 'category_tags')
+  final List<String> categoryTags;
+  @JsonKey(name: 'price_type')
+  final String priceType;
+  @JsonKey(name: 'price_amount')
+  final double? priceAmount;
+  @JsonKey(name: 'thumbnail_url')
+  final String? thumbnailUrl;
   final String status;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
+  final DateTime? updatedAt;
 
   const CreateSeriesResponse({
     required this.id,
+    required this.creatorId,
     required this.title,
+    required this.synopsis,
+    required this.language,
+    required this.categoryTags,
+    required this.priceType,
+    this.priceAmount,
+    this.thumbnailUrl,
     required this.status,
     required this.createdAt,
+    this.updatedAt,
   });
 
   factory CreateSeriesResponse.fromJson(Map<String, dynamic> json) =>
@@ -135,6 +171,8 @@ class CreateSeriesResponse {
 
   Map<String, dynamic> toJson() => _$CreateSeriesResponseToJson(this);
 }
+
+
 
 // Episode creation models
 @JsonSerializable()
@@ -164,17 +202,43 @@ class CreateEpisodeRequest {
 @JsonSerializable()
 class CreateEpisodeResponse {
   final String id;
+  @JsonKey(name: 'series_id')
+  final String seriesId;
   final String title;
+  @JsonKey(name: 'episode_number')
   final int episodeNumber;
+  @JsonKey(name: 'duration_seconds')
+  final int durationSeconds;
+  @JsonKey(name: 's3_master_path')
+  final String? s3MasterPath;
+  @JsonKey(name: 'hls_manifest_url')
+  final String? hlsManifestUrl;
+  @JsonKey(name: 'thumb_url')
+  final String? thumbUrl;
+  @JsonKey(name: 'captions_url')
+  final String? captionsUrl;
   final String status;
+  @JsonKey(name: 'published_at')
+  final DateTime? publishedAt;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
+  final DateTime? updatedAt;
 
   const CreateEpisodeResponse({
     required this.id,
+    required this.seriesId,
     required this.title,
     required this.episodeNumber,
+    required this.durationSeconds,
+    this.s3MasterPath,
+    this.hlsManifestUrl,
+    this.thumbUrl,
+    this.captionsUrl,
     required this.status,
+    this.publishedAt,
     required this.createdAt,
+    this.updatedAt,
   });
 
   factory CreateEpisodeResponse.fromJson(Map<String, dynamic> json) =>
@@ -182,6 +246,8 @@ class CreateEpisodeResponse {
 
   Map<String, dynamic> toJson() => _$CreateEpisodeResponseToJson(this);
 }
+
+
 
 // Upload models
 @JsonSerializable()
@@ -208,17 +274,16 @@ class GetUploadUrlRequest {
 
 @JsonSerializable()
 class GetUploadUrlResponse {
+  @JsonKey(name: 'upload_id')
   final String uploadId;
-  final String presignedUrl;
-  final int expiresIn;
-  final Map<String, dynamic> uploadHeaders;
+  @JsonKey(name: 'upload_url')
+  final String uploadUrl;
+  final Map<String, String> fields;
 
   const GetUploadUrlResponse({
     required this.uploadId,
-    required this.uploadId,
-    required this.presignedUrl,
-    required this.expiresIn,
-    required this.uploadHeaders,
+    required this.uploadUrl,
+    required this.fields,
   });
 
   factory GetUploadUrlResponse.fromJson(Map<String, dynamic> json) =>
@@ -268,16 +333,22 @@ class CreatorSeries {
   final String title;
   final String synopsis;
   final String language;
+  @JsonKey(name: 'category_tags')
   final List<String> categoryTags;
+  @JsonKey(name: 'price_type')
   final String priceType;
+  @JsonKey(name: 'price_amount')
   final double? priceAmount;
+  @JsonKey(name: 'thumbnail_url')
   final String? thumbnailUrl;
   final String status;
+  @JsonKey(name: 'episode_count')
   final int episodeCount;
-  final int totalViews;
-  final double averageRating;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
+  final List<CreatorEpisode> episodes;
 
   const CreatorSeries({
     required this.id,
@@ -290,10 +361,9 @@ class CreatorSeries {
     this.thumbnailUrl,
     required this.status,
     required this.episodeCount,
-    required this.totalViews,
-    required this.averageRating,
     required this.createdAt,
     this.updatedAt,
+    required this.episodes,
   });
 
   factory CreatorSeries.fromJson(Map<String, dynamic> json) =>
@@ -307,30 +377,43 @@ class CreatorSeries {
 }
 
 @JsonSerializable()
+class CreatorContentResponse {
+  final List<CreatorSeries> series;
+  final int total;
+
+  const CreatorContentResponse({
+    required this.series,
+    required this.total,
+  });
+
+  factory CreatorContentResponse.fromJson(Map<String, dynamic> json) =>
+      _$CreatorContentResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$CreatorContentResponseToJson(this);
+}
+
+@JsonSerializable()
 class CreatorEpisode {
   final String id;
-  final String seriesId;
   final String title;
+  @JsonKey(name: 'episode_number')
   final int episodeNumber;
+  @JsonKey(name: 'duration_seconds')
   final int durationSeconds;
-  final String? thumbUrl;
   final String status;
-  final int viewCount;
-  final double? rating;
+  @JsonKey(name: 'published_at')
   final DateTime? publishedAt;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
 
   const CreatorEpisode({
     required this.id,
-    required this.seriesId,
     required this.title,
     required this.episodeNumber,
     required this.durationSeconds,
-    this.thumbUrl,
     required this.status,
-    required this.viewCount,
-    this.rating,
     this.publishedAt,
     required this.createdAt,
     this.updatedAt,

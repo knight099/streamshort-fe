@@ -11,6 +11,7 @@ import 'package:shimmer/shimmer.dart';
 import 'features/creator/presentation/screens/creator_onboarding_screen.dart';
 import 'features/creator/data/models/creator_models.dart';
 import 'features/content/presentation/screens/series_detail_screen.dart';
+import 'features/creator/presentation/screens/dashboard/creator_dashboard_screen.dart';
 
 import 'core/config/environment.dart';
 
@@ -106,6 +107,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _otpController.text.trim(),
         _requestId!,
       );
+      
+      // Fetch the complete user profile to get the correct role
+      try {
+        final profileRepo = ref.read(profileRepositoryProvider);
+        final userProfile = await profileRepo.getUserProfile();
+        
+        // Update the user in auth state with the complete profile
+        if (userProfile.role != 'user') {
+          await ref.read(authNotifierProvider.notifier).updateUserRole(userProfile.role);
+        }
+      } catch (e) {
+        // If profile fetch fails, check for creator profile as fallback
+        try {
+          final accessToken = ref.read(accessTokenProvider);
+          if (accessToken != null) {
+            final creatorRepo = ref.read(creatorRepositoryProvider);
+            final creatorProfile = await creatorRepo.getCreatorProfile(accessToken: accessToken);
+            if (creatorProfile != null) {
+              // User has a creator profile, update their role
+              await ref.read(authNotifierProvider.notifier).updateUserRole('creator');
+            }
+          }
+        } catch (e2) {
+          // If both profile fetch and creator profile check fail, continue with regular user
+          print('Profile fetch and creator profile check failed: $e, $e2');
+        }
+      }
       
       // Navigate to home screen on successful authentication
       if (mounted) {
@@ -282,7 +310,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const CreatorDashboardScreen(),
+                              builder: (context) => const CreatorDashboardRedirect(),
                             ),
                           );
                         },
@@ -358,6 +386,30 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
       // Try to get user from auth state first
       final authUser = ref.read(authUserProvider);
       if (authUser != null) {
+        // Check if this user has a creator profile
+        try {
+          final creatorRepo = ref.read(creatorRepositoryProvider);
+          final accessToken = ref.read(accessTokenProvider);
+          
+          if (accessToken != null) {
+            print('Checking for creator profile...');
+            final creatorProfile = await creatorRepo.getCreatorProfile(accessToken: accessToken);
+            if (creatorProfile != null) {
+              print('Creator profile found! Updating user role to creator');
+              // User has a creator profile, update their role
+              await ref.read(authNotifierProvider.notifier).updateUserRole('creator');
+              // The auth state will be updated automatically, no need to manually refresh
+            } else {
+              print('No creator profile found');
+            }
+          } else {
+            print('No access token available');
+          }
+        } catch (e) {
+          // If creator profile check fails, continue with regular user
+          print('Creator profile check failed: $e');
+        }
+        
         setState(() {
           _user = authUser;
           _isLoading = false;
@@ -370,12 +422,11 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
         _user = User(
           id: 'demo_user_1',
           phone: '+919876543210',
-          name: 'John Doe',
-          email: 'john.doe@example.com',
-          role: 'user',
-          avatar: null,
+          displayName: 'John Doe',
+          avatarUrl: null,
+          role: 'creator', // This user has completed creator onboarding
           createdAt: DateTime.now().subtract(const Duration(days: 30)),
-          updatedAt: DateTime.now(),
+          lastLoginAt: DateTime.now(),
         );
         _isLoading = false;
       });
@@ -389,6 +440,14 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the auth user to automatically update when role changes
+    final authUser = ref.watch(authUserProvider);
+    
+    // Update local user state if auth user changes
+    if (authUser != null && (_user == null || _user!.id != authUser.id)) {
+      _user = authUser;
+    }
+    
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
@@ -435,6 +494,11 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadUserProfile,
+            tooltip: 'Refresh Profile',
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
               ref.read(authNotifierProvider.notifier).logout();
@@ -462,10 +526,10 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: Theme.of(context).colorScheme.primary,
-                      child: _user?.avatar != null
+                      child: _user?.avatarUrl != null
                           ? ClipOval(
                               child: CachedNetworkImage(
-                                imageUrl: _user!.avatar!,
+                                imageUrl: _user!.avatarUrl!,
                                 width: 80,
                                 height: 80,
                                 fit: BoxFit.cover,
@@ -493,7 +557,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _user?.name ?? 'User',
+                            _user?.displayName ?? 'User',
                             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
@@ -622,53 +686,50 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
               },
             ),
             const SizedBox(height: 8),
-            // Creator actions
-            Text(
-              'Creator',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+            // Creator actions - only show if user is a creator
+            if (_user?.role == 'creator') ...[
+              Text(
+                'Creator',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            _buildActionButton(
-              context,
-              'Become a Creator',
-              Icons.star_border,
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CreatorOnboardingScreen(),
-                  ),
-                );
-              },
-            ),
-            _buildActionButton(
-              context,
-              'Creator Profile',
-              Icons.person_outline,
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CreatorProfileScreen(),
-                  ),
-                );
-              },
-            ),
-            _buildActionButton(
-              context,
-              'Creator Dashboard',
-              Icons.dashboard_customize,
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CreatorDashboardScreen(),
-                  ),
-                );
-              },
-            ),
+              const SizedBox(height: 8),
+              _buildActionButton(
+                context,
+                'Creator Dashboard',
+                Icons.dashboard_customize,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CreatorDashboardRedirect(),
+                    ),
+                  );
+                },
+              ),
+            ] else ...[
+              Text(
+                'Creator',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildActionButton(
+                context,
+                'Become a Creator',
+                Icons.star_border,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CreatorOnboardingScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -681,8 +742,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
 
   Future<void> _openEditProfileSheet() async {
     if (_user == null) return;
-    final nameController = TextEditingController(text: _user?.name ?? '');
-    final emailController = TextEditingController(text: _user?.email ?? '');
+            final nameController = TextEditingController(text: _user?.displayName ?? '');
 
     await showModalBottomSheet(
       context: context,
@@ -707,16 +767,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
               TextField(
                 controller: nameController,
                 decoration: const InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
+                  labelText: 'Display Name',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -731,8 +782,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                           try {
                             final profileRepo = ref.read(profileRepositoryProvider);
                             final updated = await profileRepo.updateUserProfile(
-                              name: nameController.text.trim().isEmpty ? null : nameController.text.trim(),
-                              email: emailController.text.trim().isEmpty ? null : emailController.text.trim(),
+                              displayName: nameController.text.trim().isEmpty ? null : nameController.text.trim(),
                             );
                             if (mounted) {
                               setState(() => _user = updated);
@@ -956,14 +1006,14 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
   }
 }
 
-class CreatorDashboardScreen extends ConsumerStatefulWidget {
-  const CreatorDashboardScreen({super.key});
+class OldCreatorDashboardScreen extends ConsumerStatefulWidget {
+  const OldCreatorDashboardScreen({super.key});
 
   @override
-  ConsumerState<CreatorDashboardScreen> createState() => _CreatorDashboardScreenState();
+  ConsumerState<OldCreatorDashboardScreen> createState() => _OldCreatorDashboardScreenState();
 }
 
-class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen> {
+class _OldCreatorDashboardScreenState extends ConsumerState<OldCreatorDashboardScreen> {
   CreatorDashboardResponse? _dashboardData;
   bool _isLoading = true;
   String? _error;
@@ -1250,6 +1300,17 @@ class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen>
   }
 }
 
+// Redirect to the new comprehensive Creator Dashboard
+// Redirect widget for the creator dashboard
+class CreatorDashboardRedirect extends ConsumerWidget {
+  const CreatorDashboardRedirect({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return const CreatorDashboardScreen();
+  }
+}
+
 class CreatorProfileScreen extends ConsumerStatefulWidget {
   const CreatorProfileScreen({super.key});
 
@@ -1287,6 +1348,93 @@ class _CreatorProfileScreenState extends ConsumerState<CreatorProfileScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _showEditProfileDialog(BuildContext context) async {
+    final nameCtrl = TextEditingController(text: _profile!.displayName);
+    final bioCtrl = TextEditingController(text: _profile!.bio ?? '');
+    bool saving = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return AlertDialog(
+              title: const Text('Edit Creator Profile'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Display Name',
+                      border: OutlineInputBorder(),
+                    ),
+                    controller: nameCtrl,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Bio',
+                      border: OutlineInputBorder(),
+                    ),
+                    controller: bioCtrl,
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          if (nameCtrl.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Display name is required')),
+                            );
+                            return;
+                          }
+                          
+                          setModalState(() => saving = true);
+                          try {
+                            final repo = ref.read(creatorRepositoryProvider);
+                            final accessToken = ref.read(accessTokenProvider);
+                            await repo.updateCreatorProfile(
+                              displayName: nameCtrl.text.trim(),
+                              bio: bioCtrl.text.trim().isEmpty ? null : bioCtrl.text.trim(),
+                              accessToken: accessToken,
+                            );
+                            if (mounted) {
+                              Navigator.pop(ctx);
+                              await _load();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Profile updated successfully')),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed to update profile: $e')),
+                              );
+                            }
+                          } finally {
+                            setModalState(() => saving = false);
+                          }
+                        },
+                  child: saving
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _openOnboardSheet() async {
@@ -1456,6 +1604,15 @@ class _CreatorProfileScreenState extends ConsumerState<CreatorProfileScreen> {
                       Text(_profile!.displayName, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                       Text(_profile!.kycStatus, style: Theme.of(context).textTheme.bodyMedium),
                     ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: () => _showEditProfileDialog(context),
+                  tooltip: 'Edit Profile',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
                   ),
                 ),
               ],
@@ -1788,7 +1945,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                     child: CachedNetworkImage(
-                      imageUrl: series.thumbnail,
+                      imageUrl: series.thumbnailUrl ?? '',
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Shimmer.fromColors(
                         baseColor: Colors.grey.shade900,
@@ -1842,7 +1999,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          series.rating.toStringAsFixed(1),
+                          'New',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -1893,7 +2050,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
                     ),
                     Chip(
-                      label: Text('${series.episodeCount} episodes'),
+                      label: Text(series.priceType == 'free' ? 'FREE' : 'PREMIUM'),
                       backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
                     ),
                   ],
@@ -1943,14 +2100,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildHome(List<Series> allSeries) {
     // Build sections
     final List<Series> featured = List<Series>.from(allSeries)
-      ..sort((a, b) => (b.viewCount).compareTo(a.viewCount));
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     final List<Series> trending = featured.take(10).toList();
 
     final List<Series> topRated = List<Series>.from(allSeries)
-      ..sort((a, b) => (b.rating).compareTo(a.rating));
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     final List<Series> newReleases = List<Series>.from(allSeries)
-      ..sort((a, b) => (b.createdAt).compareTo(a.createdAt));
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     final Map<String, List<Series>> byCategory = <String, List<Series>>{};
     for (final s in allSeries) {
@@ -2012,7 +2169,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   fit: StackFit.expand,
                   children: [
                     CachedNetworkImage(
-                      imageUrl: s.banner,
+                      imageUrl: s.thumbnailUrl ?? '',
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Shimmer.fromColors(
                         baseColor: Colors.grey.shade900,
@@ -2151,7 +2308,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: CachedNetworkImage(
-                  imageUrl: s.thumbnail,
+                  imageUrl: s.thumbnailUrl ?? '',
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Shimmer.fromColors(
                     baseColor: Colors.grey.shade900,
@@ -2177,7 +2334,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               children: [
                 const Icon(Icons.star, size: 14, color: Colors.amber),
                 const SizedBox(width: 2),
-                Text(s.rating.toStringAsFixed(1), style: Theme.of(context).textTheme.bodySmall),
+                Text('New', style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
           ],

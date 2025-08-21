@@ -18,9 +18,8 @@ class ProfileRepository {
   }
 
   Future<User> updateUserProfile({
-    String? name,
-    String? email,
-    String? avatar,
+    String? displayName,
+    String? avatarUrl,
   }) async {
     try {
       // First get current profile
@@ -30,12 +29,11 @@ class ProfileRepository {
       final updatedUser = User(
         id: currentProfile.id,
         phone: currentProfile.phone,
-        name: name ?? currentProfile.name,
-        email: email ?? currentProfile.email,
+        displayName: displayName ?? currentProfile.displayName,
+        avatarUrl: avatarUrl ?? currentProfile.avatarUrl,
         role: currentProfile.role,
-        avatar: avatar ?? currentProfile.avatar,
         createdAt: currentProfile.createdAt,
-        updatedAt: currentProfile.updatedAt,
+        lastLoginAt: DateTime.now(),
       );
       
       final response = await _apiClient.updateUserProfile(updatedUser);

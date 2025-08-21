@@ -707,10 +707,13 @@ class _CreatorOnboardingScreenState extends ConsumerState<CreatorOnboardingScree
         accessToken: accessToken,
       );
 
+      // Update user role to creator after successful onboarding
+      await ref.read(authNotifierProvider.notifier).updateUserRole('creator');
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Creator onboarding submitted successfully!'),
+            content: Text('Creator onboarding submitted successfully! You are now a creator.'),
             backgroundColor: Colors.green,
           ),
         );

@@ -49,8 +49,8 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 final contentRepositoryProvider = Provider<ContentRepository>((ref) {
-  final apiClient = ref.read(apiClientProvider);
-  return ContentRepository(apiClient);
+  final dio = ref.read(dioProvider);
+  return ContentRepository(dio: dio);
 });
 
 final creatorRepositoryProvider = Provider<CreatorRepository>((ref) {

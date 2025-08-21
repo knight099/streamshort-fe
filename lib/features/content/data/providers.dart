@@ -1,2 +1,8 @@
-export 'package:streamshort/features/content/presentation/providers/content_providers.dart';
-export 'package:streamshort/features/content/data/repositories/content_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers.dart';
+import 'repositories/content_repository.dart';
+
+final contentRepositoryProvider = Provider<ContentRepository>((ref) {
+  final dio = ref.watch(dioProvider);
+  return ContentRepository(dio: dio);
+});

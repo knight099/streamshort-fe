@@ -47,12 +47,11 @@ class AuthRepository {
         final user = User(
           id: data['user'] is Map && (data['user']['id']?.toString().isNotEmpty ?? false) ? data['user']['id'].toString() : '',
           phone: normalizedPhone,
-          name: null,
-          email: null,
+          displayName: null,
+          avatarUrl: null,
           role: 'user',
-          avatar: null,
           createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
+          lastLoginAt: DateTime.now(),
         );
         return TokenResponse(accessToken: accessToken, refreshToken: refreshToken, user: user);
       }
@@ -86,6 +85,17 @@ class AuthRepository {
   Future<void> logout() async {
     // Clear stored tokens
     // You can use secure storage here
+  }
+
+  Future<void> updateUserRole(String newRole) async {
+    try {
+      // This would typically call an API endpoint to update the user role
+      // For now, we'll just update the local state
+      // In a real app, you'd call something like:
+      // await _dio.put('api/users/role', data: {'role': newRole});
+    } catch (e) {
+      throw Exception('Failed to update user role: $e');
+    }
   }
 
   Exception _handleError(DioException e) {

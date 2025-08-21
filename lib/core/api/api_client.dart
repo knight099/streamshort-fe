@@ -179,95 +179,103 @@ class RefreshRequest {
 class User {
   final String id;
   final String phone;
-  final String? name;
-  final String? email;
+  final String? displayName;
+  final String? avatarUrl;
   final String role;
-  final String? avatar;
   final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? lastLoginAt;
 
   User({
     required this.id,
     required this.phone,
-    this.name,
-    this.email,
+    this.displayName,
+    this.avatarUrl,
     required this.role,
-    this.avatar,
     required this.createdAt,
-    required this.updatedAt,
+    this.lastLoginAt,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
   Map<String, dynamic> toJson() => _$UserToJson(this);
+
+  bool get isCreator => role == 'creator';
+  bool get isAdmin => role == 'admin';
 }
 
 // Content Models
 @JsonSerializable()
 class Series {
   final String id;
+  @JsonKey(name: 'creator_id')
+  final String creatorId;
+  @JsonKey(name: 'creator_name')
+  final String creatorName;
   final String title;
   final String synopsis;
-  final String category;
   final String language;
+  @JsonKey(name: 'category_tags')
+  final List<String> categoryTags;
+  @JsonKey(name: 'price_type')
   final String priceType;
-  final double? price;
-  final String thumbnail;
-  final String banner;
-  final String creatorId;
-  final int episodeCount;
-  final double rating;
-  final int viewCount;
+  @JsonKey(name: 'price_amount')
+  final double? priceAmount;
+  @JsonKey(name: 'thumbnail_url')
+  final String? thumbnailUrl;
+  final String status;
+  @JsonKey(name: 'episodes')
+  final List<Episode>? episodes;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime updatedAt;
 
   Series({
     required this.id,
+    required this.creatorId,
+    required this.creatorName,
     required this.title,
     required this.synopsis,
-    required this.category,
     required this.language,
+    required this.categoryTags,
     required this.priceType,
-    this.price,
-    required this.thumbnail,
-    required this.banner,
-    required this.creatorId,
-    required this.episodeCount,
-    required this.rating,
-    required this.viewCount,
+    this.priceAmount,
+    this.thumbnailUrl,
+    required this.status,
+    this.episodes,
     required this.createdAt,
     required this.updatedAt,
   });
 
   factory Series.fromJson(Map<String, dynamic> json) => _$SeriesFromJson(json);
   Map<String, dynamic> toJson() => _$SeriesToJson(this);
+
+  String get category => categoryTags.isNotEmpty ? categoryTags[0] : 'Uncategorized';
+  bool get isFree => priceType == 'free';
 }
 
 @JsonSerializable()
 class Episode {
   final String id;
-  final String seriesId;
   final String title;
-  final String description;
+  @JsonKey(name: 'episode_number')
   final int episodeNumber;
-  final String videoUrl;
-  final String thumbnail;
-  final Duration duration;
-  final bool isPremium;
+  @JsonKey(name: 'duration_seconds')
+  final int durationSeconds;
+  @JsonKey(name: 'thumb_url')
+  final String? thumbUrl;
+  @JsonKey(name: 'published_at')
+  final DateTime? publishedAt;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
-  final DateTime updatedAt;
 
   Episode({
     required this.id,
-    required this.seriesId,
     required this.title,
-    required this.description,
     required this.episodeNumber,
-    required this.videoUrl,
-    required this.thumbnail,
-    required this.duration,
-    required this.isPremium,
+    required this.durationSeconds,
+    this.thumbUrl,
+    this.publishedAt,
     required this.createdAt,
-    required this.updatedAt,
   });
 
   factory Episode.fromJson(Map<String, dynamic> json) => _$EpisodeFromJson(json);
@@ -276,16 +284,16 @@ class Episode {
 
 @JsonSerializable()
 class SeriesListResponse {
-  final List<Series> series;
-  final int total;
-  final int page;
-  final int limit;
+  final List<Series> items;
+  final int? total;
+  final int? page;
+  final int? limit;
 
   SeriesListResponse({
-    required this.series,
-    required this.total,
-    required this.page,
-    required this.limit,
+    required this.items,
+    this.total,
+    this.page,
+    this.limit,
   });
 
   factory SeriesListResponse.fromJson(Map<String, dynamic> json) => _$SeriesListResponseFromJson(json);
