@@ -9,6 +9,7 @@ class ContentRepository {
   Future<SeriesListResponse> getPublishedSeries({
     int page = 1,
     int limit = 20,
+    bool? includeAdultContent,
     String? accessToken,
   }) async {
     try {
@@ -21,6 +22,7 @@ class ContentRepository {
         queryParameters: {
           'page': page,
           'limit': limit,
+          if (includeAdultContent != null) 'include_adult': includeAdultContent,
         },
       );
 

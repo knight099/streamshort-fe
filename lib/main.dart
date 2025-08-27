@@ -11,9 +11,13 @@ import 'package:shimmer/shimmer.dart';
 import 'features/creator/presentation/screens/creator_onboarding_screen.dart';
 import 'features/creator/data/models/creator_models.dart';
 import 'features/content/presentation/screens/series_detail_screen.dart';
+import 'features/content/presentation/screens/liked_videos_screen.dart';
 import 'features/creator/presentation/screens/dashboard/creator_dashboard_screen.dart';
+import 'features/subscription/presentation/screens/subscription_management_screen.dart';
+
 
 import 'core/config/environment.dart';
+import 'features/subscription/data/models/subscription_models.dart';
 
 void main() {
   // Set environment - change this to switch between APIs
@@ -616,28 +620,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    'Likes Given',
-                    '89',
-                    Icons.favorite_outline,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    'Comments',
-                    '15',
-                    Icons.comment,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
+  
 
             // Quick Actions
             Text(
@@ -647,6 +630,19 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            _buildActionButton(
+              context,
+              'Liked Videos',
+              Icons.favorite,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const LikedVideosScreen(),
+                  ),
+                );
+              },
+            ),
             _buildActionButton(
               context,
               'Edit Profile',
@@ -661,6 +657,19 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
               Icons.subscriptions,
               () {
                 _openSubscriptionSheet();
+              },
+            ),
+            _buildActionButton(
+              context,
+              'Subscriptions',
+              Icons.subscriptions,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SubscriptionManagementScreen(),
+                  ),
+                );
               },
             ),
             _buildActionButton(
@@ -882,7 +891,7 @@ class _SubscriptionSheet extends StatefulWidget {
 class _SubscriptionSheetState extends State<_SubscriptionSheet> {
   bool _isLoading = true;
   String? _error;
-  List<SubscriptionPlan> _plans = const [];
+  List<SubscriptionPlan> _plans = [];
   Subscription? _current;
   bool _isCreating = false;
 
@@ -973,12 +982,22 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
                                           onPressed: () async {
                                             setState(() => _isCreating = true);
                                             try {
-                                              final req = PaymentCreateRequest(planId: p.id, paymentMethod: 'razorpay');
+                                              final req = CreateSubscriptionRequest(
+                                                targetType: 'plan',
+                                                targetId: p.id,
+                                                planId: p.id,
+                                                autoRenew: true,
+                                              );
                                               final subRepo = widget.ref.read(subscriptionRepositoryProvider);
-                                              final resp = await subRepo.createSubscription(req);
+                                              await subRepo.createSubscription(
+                                                targetType: 'plan',
+                                                targetId: p.id,
+                                                planId: p.id,
+                                                autoRenew: true,
+                                              );
                                               if (mounted) {
                                                 ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(content: Text('Payment created. Open URL: ${resp.paymentUrl}')),
+                                                  const SnackBar(content: Text('Subscription created successfully')),
                                                 );
                                                 await _load();
                                               }
@@ -1408,6 +1427,7 @@ class _CreatorProfileScreenState extends ConsumerState<CreatorProfileScreen> {
                               bio: bioCtrl.text.trim().isEmpty ? null : bioCtrl.text.trim(),
                               accessToken: accessToken,
                             );
+                            await _load();
                             if (mounted) {
                               Navigator.pop(ctx);
                               await _load();
@@ -1666,9 +1686,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _loadContent() async {
     try {
+      final includeAdultContent = ref.read(adultContentFilterProvider);
       await ref.read(contentNotifierProvider.notifier).loadSeries(
         category: _selectedCategory == 'All' ? null : _selectedCategory,
         language: _selectedLanguage == 'All' ? null : _selectedLanguage,
+        includeAdultContent: includeAdultContent,
         refresh: true,
       );
     } catch (e) {
@@ -2347,10 +2369,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Switch Environment'),
+        title: const Text('Settings'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Text(
+              'Environment',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
             ListTile(
               leading: Icon(
                 Icons.developer_mode,
@@ -2403,6 +2432,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   _loadContent();
                 });
+              },
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Content Filters',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Consumer(
+              builder: (context, ref, _) {
+                final includeAdultContent = ref.watch(adultContentFilterProvider);
+                return SwitchListTile(
+                  title: const Text('Show Adult Content'),
+                  subtitle: const Text('Include mature content in search results'),
+                  value: includeAdultContent,
+                  onChanged: (value) {
+                    ref.read(adultContentFilterProvider.notifier).state = value;
+                    Navigator.pop(context);
+                    // Refresh content with new filter
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _loadContent();
+                    });
+                  },
+                );
               },
             ),
           ],

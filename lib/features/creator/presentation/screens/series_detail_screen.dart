@@ -165,7 +165,7 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
         onPressed: () {
           showDialog(
             context: context,
-            builder: (context) => AddEpisodeDialog(series: _series),
+            builder: (context) => AddEpisodeDialog(seriesId: _series.id),
           ).then((_) => _loadSeriesData());
         },
         icon: const Icon(Icons.add),
@@ -363,7 +363,7 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
                 onPressed: () {
                   showDialog(
                     context: context,
-                    builder: (context) => AddEpisodeDialog(series: _series),
+                    builder: (context) => AddEpisodeDialog(seriesId: _series.id),
                   ).then((_) => _loadSeriesData());
                 },
                 icon: const Icon(Icons.add),

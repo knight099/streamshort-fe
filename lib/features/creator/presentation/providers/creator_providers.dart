@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:streamshort/features/creator/data/models/creator_models.dart';
-import 'package:streamshort/features/creator/data/repositories/creator_repository.dart';
 import 'package:streamshort/core/providers.dart';
 
 final creatorProfileProvider = StateNotifierProvider<CreatorProfileNotifier, AsyncValue<CreatorProfile?>>((ref) {
@@ -9,10 +8,6 @@ final creatorProfileProvider = StateNotifierProvider<CreatorProfileNotifier, Asy
 
 final creatorDashboardProvider = StateNotifierProvider<CreatorDashboardNotifier, AsyncValue<CreatorDashboardResponse?>>((ref) {
   return CreatorDashboardNotifier();
-});
-
-final creatorRepositoryProvider = Provider<CreatorRepository>((ref) {
-  return CreatorRepository(ref.read(apiClientProvider), ref.read(dioProvider));
 });
 
 class CreatorProfileNotifier extends StateNotifier<AsyncValue<CreatorProfile?>> {

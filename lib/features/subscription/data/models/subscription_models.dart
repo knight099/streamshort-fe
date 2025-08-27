@@ -7,29 +7,20 @@ class SubscriptionPlan {
   final String id;
   final String name;
   final String description;
-  @JsonKey(name: 'price_amount')
-  final double priceAmount;
-  @JsonKey(name: 'price_currency')
-  final String priceCurrency;
-  @JsonKey(name: 'billing_interval')
-  final String billingInterval;
-  @JsonKey(name: 'trial_days')
-  final int? trialDays;
-  @JsonKey(name: 'created_at')
-  final DateTime createdAt;
-  @JsonKey(name: 'updated_at')
-  final DateTime? updatedAt;
+  final int duration;
+  final double amount;
+  final String currency;
+  @JsonKey(name: 'is_active')
+  final bool isActive;
 
   const SubscriptionPlan({
     required this.id,
     required this.name,
     required this.description,
-    required this.priceAmount,
-    required this.priceCurrency,
-    required this.billingInterval,
-    this.trialDays,
-    required this.createdAt,
-    this.updatedAt,
+    required this.duration,
+    required this.amount,
+    required this.currency,
+    required this.isActive,
   });
 
   factory SubscriptionPlan.fromJson(Map<String, dynamic> json) =>
@@ -43,72 +34,190 @@ class Subscription {
   final String id;
   @JsonKey(name: 'user_id')
   final String userId;
+  @JsonKey(name: 'target_type')
+  final String targetType;
+  @JsonKey(name: 'target_id')
+  final String targetId;
+  @JsonKey(name: 'razorpay_subscription_id')
+  final String? razorpaySubscriptionId;
+  final String status;
+  @JsonKey(name: 'start_date')
+  final DateTime startDate;
+  @JsonKey(name: 'end_date')
+  final DateTime endDate;
+  @JsonKey(name: 'auto_renew')
+  final bool autoRenew;
   @JsonKey(name: 'plan_id')
   final String planId;
-  final String status;
-  @JsonKey(name: 'current_period_start')
-  final DateTime currentPeriodStart;
-  @JsonKey(name: 'current_period_end')
-  final DateTime currentPeriodEnd;
-  @JsonKey(name: 'trial_end')
-  final DateTime? trialEnd;
-  @JsonKey(name: 'cancel_at')
-  final DateTime? cancelAt;
-  @JsonKey(name: 'created_at')
-  final DateTime createdAt;
-  @JsonKey(name: 'updated_at')
-  final DateTime? updatedAt;
+  final double amount;
+  final String currency;
 
   const Subscription({
     required this.id,
     required this.userId,
-    required this.planId,
+    required this.targetType,
+    required this.targetId,
+    this.razorpaySubscriptionId,
     required this.status,
-    required this.currentPeriodStart,
-    required this.currentPeriodEnd,
-    this.trialEnd,
-    this.cancelAt,
-    required this.createdAt,
-    this.updatedAt,
+    required this.startDate,
+    required this.endDate,
+    required this.autoRenew,
+    required this.planId,
+    required this.amount,
+    required this.currency,
   });
 
   factory Subscription.fromJson(Map<String, dynamic> json) =>
       _$SubscriptionFromJson(json);
 
   Map<String, dynamic> toJson() => _$SubscriptionToJson(this);
+
+  bool get isActive => status == 'active';
+  bool get isCancelled => status == 'cancelled';
+  bool get isExpired => status == 'expired';
 }
 
 @JsonSerializable()
-class PaymentCreateRequest {
+class SubscriptionListResponse {
+  final int total;
+  final int page;
+  @JsonKey(name: 'per_page')
+  final int perPage;
+  @JsonKey(name: 'total_pages')
+  final int totalPages;
+  final List<Subscription> subscriptions;
+
+  const SubscriptionListResponse({
+    required this.total,
+    required this.page,
+    required this.perPage,
+    required this.totalPages,
+    required this.subscriptions,
+  });
+
+  factory SubscriptionListResponse.fromJson(Map<String, dynamic> json) =>
+      _$SubscriptionListResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SubscriptionListResponseToJson(this);
+}
+
+@JsonSerializable()
+class SubscriptionCheckResponse {
+  @JsonKey(name: 'has_access')
+  final bool hasAccess;
+  @JsonKey(name: 'target_type')
+  final String targetType;
+  @JsonKey(name: 'target_id')
+  final String targetId;
+  @JsonKey(name: 'subscription_details')
+  final Subscription? subscriptionDetails;
+
+  const SubscriptionCheckResponse({
+    required this.hasAccess,
+    required this.targetType,
+    required this.targetId,
+    this.subscriptionDetails,
+  });
+
+  factory SubscriptionCheckResponse.fromJson(Map<String, dynamic> json) =>
+      _$SubscriptionCheckResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SubscriptionCheckResponseToJson(this);
+}
+
+@JsonSerializable()
+class CreateSubscriptionRequest {
+  @JsonKey(name: 'target_type')
+  final String targetType;
+  @JsonKey(name: 'target_id')
+  final String targetId;
+  @JsonKey(name: 'plan_id')
   final String planId;
-  @JsonKey(name: 'payment_method')
-  final String paymentMethod;
+  @JsonKey(name: 'auto_renew')
+  final bool autoRenew;
 
-  const PaymentCreateRequest({
+  const CreateSubscriptionRequest({
+    required this.targetType,
+    required this.targetId,
     required this.planId,
-    required this.paymentMethod,
+    required this.autoRenew,
   });
 
-  factory PaymentCreateRequest.fromJson(Map<String, dynamic> json) =>
-      _$PaymentCreateRequestFromJson(json);
+  factory CreateSubscriptionRequest.fromJson(Map<String, dynamic> json) =>
+      _$CreateSubscriptionRequestFromJson(json);
 
-  Map<String, dynamic> toJson() => _$PaymentCreateRequestToJson(this);
+  Map<String, dynamic> toJson() => _$CreateSubscriptionRequestToJson(this);
 }
 
 @JsonSerializable()
-class PaymentCreateResponse {
-  @JsonKey(name: 'payment_url')
-  final String paymentUrl;
-  @JsonKey(name: 'payment_id')
-  final String paymentId;
+class CreateSubscriptionResponse {
+  @JsonKey(name: 'subscription_id')
+  final String subscriptionId;
+  final String status;
+  @JsonKey(name: 'plan_id')
+  final String planId;
+  @JsonKey(name: 'start_date')
+  final DateTime startDate;
+  @JsonKey(name: 'end_date')
+  final DateTime endDate;
+  @JsonKey(name: 'next_billing')
+  final DateTime? nextBilling;
+  @JsonKey(name: 'checkout_url')
+  final String checkoutUrl;
 
-  const PaymentCreateResponse({
-    required this.paymentUrl,
-    required this.paymentId,
+  const CreateSubscriptionResponse({
+    required this.subscriptionId,
+    required this.status,
+    required this.planId,
+    required this.startDate,
+    required this.endDate,
+    this.nextBilling,
+    required this.checkoutUrl,
   });
 
-  factory PaymentCreateResponse.fromJson(Map<String, dynamic> json) =>
-      _$PaymentCreateResponseFromJson(json);
+  factory CreateSubscriptionResponse.fromJson(Map<String, dynamic> json) =>
+      _$CreateSubscriptionResponseFromJson(json);
 
-  Map<String, dynamic> toJson() => _$PaymentCreateResponseToJson(this);
+  Map<String, dynamic> toJson() => _$CreateSubscriptionResponseToJson(this);
+}
+
+@JsonSerializable()
+class CancelSubscriptionResponse {
+  final String message;
+  @JsonKey(name: 'subscription_id')
+  final String subscriptionId;
+  final String status;
+
+  const CancelSubscriptionResponse({
+    required this.message,
+    required this.subscriptionId,
+    required this.status,
+  });
+
+  factory CancelSubscriptionResponse.fromJson(Map<String, dynamic> json) =>
+      _$CancelSubscriptionResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$CancelSubscriptionResponseToJson(this);
+}
+
+@JsonSerializable()
+class RenewSubscriptionResponse {
+  final String message;
+  @JsonKey(name: 'subscription_id')
+  final String subscriptionId;
+  final String status;
+  @JsonKey(name: 'new_end_date')
+  final DateTime newEndDate;
+
+  const RenewSubscriptionResponse({
+    required this.message,
+    required this.subscriptionId,
+    required this.status,
+    required this.newEndDate,
+  });
+
+  factory RenewSubscriptionResponse.fromJson(Map<String, dynamic> json) =>
+      _$RenewSubscriptionResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$RenewSubscriptionResponseToJson(this);
 }

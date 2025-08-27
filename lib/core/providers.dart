@@ -66,5 +66,6 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
 
 final subscriptionRepositoryProvider = Provider<SubscriptionRepository>((ref) {
   final apiClient = ref.read(apiClientProvider);
-  return SubscriptionRepository(apiClient);
+  final dio = ref.read(dioProvider);
+  return SubscriptionRepository(dio: dio);
 });

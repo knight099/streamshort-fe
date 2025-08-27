@@ -105,7 +105,7 @@ class SeriesTab extends StatelessWidget {
                       onPressed: () {
                         showDialog(
                           context: context,
-                          builder: (context) => AddEpisodeDialog(series: series),
+                          builder: (context) => AddEpisodeDialog(seriesId: series.id),
                         );
                       },
                     ),

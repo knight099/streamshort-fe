@@ -5,6 +5,8 @@ import '../../data/providers.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../auth/data/models/auth_models.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
+import '../../../subscription/presentation/providers/subscription_providers.dart';
+import '../../../subscription/presentation/widgets/subscription_dialog.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -47,6 +49,14 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
           _series = series;
           _isLoading = false;
         });
+
+        // Check subscription status if series is not free
+        if (!series.isFree) {
+          ref.read(subscriptionCheckProvider.notifier).checkAccess(
+            targetType: 'series',
+            targetId: series.id,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -87,6 +97,23 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
         ),
       );
       return;
+    }
+
+    // Check subscription for premium content
+    if (_series != null && !_series!.isFree) {
+      final subscriptionState = ref.read(subscriptionCheckProvider);
+      if (subscriptionState is SubscriptionCheckLoaded && !subscriptionState.hasAccess) {
+        showDialog(
+          context: context,
+          builder: (context) => SubscriptionDialog(
+            targetType: 'series',
+            targetId: _series!.id,
+            title: 'Premium Content',
+            description: 'Subscribe to watch all episodes of ${_series!.title}',
+          ),
+        );
+        return;
+      }
     }
 
     // TODO: Navigate to episode player screen
@@ -199,6 +226,24 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
                         : Theme.of(context).colorScheme.secondary,
                     labelStyle: const TextStyle(color: Colors.white),
                   ),
+                  if (!_series!.isFree) ...[
+                    const SizedBox(width: 8),
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final subscriptionState = ref.watch(subscriptionCheckProvider);
+                        if (subscriptionState is SubscriptionCheckLoaded) {
+                          return Chip(
+                            label: Text(subscriptionState.hasAccess ? 'SUBSCRIBED' : 'SUBSCRIBE'),
+                            backgroundColor: subscriptionState.hasAccess
+                                ? Colors.green
+                                : Theme.of(context).colorScheme.error,
+                            labelStyle: const TextStyle(color: Colors.white),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -300,7 +345,18 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
                 ),
               ),
               const SizedBox(width: 16),
-              const Icon(Icons.play_circle_outline, size: 32),
+              if (!_series!.isFree)
+                Consumer(
+                  builder: (context, ref, child) {
+                    final subscriptionState = ref.watch(subscriptionCheckProvider);
+                    if (subscriptionState is SubscriptionCheckLoaded && !subscriptionState.hasAccess) {
+                      return const Icon(Icons.lock, size: 32);
+                    }
+                    return const Icon(Icons.play_circle_outline, size: 32);
+                  },
+                )
+              else
+                const Icon(Icons.play_circle_outline, size: 32),
             ],
           ),
         ),

@@ -20,6 +20,11 @@ A mobile-first Flutter application for streaming short videos with creator monet
 - Series and episode management
 - Analytics dashboard (views, earnings, watch time)
 - Content upload and transcoding workflow
+- Add "add episode" for the series created by the creator in user profile for creator
+-remove likes and comments 
+- add liked videos in the list of quick actions
+-  add adulteration filter
+
 
 ### Monetization
 - Subscription-based access control

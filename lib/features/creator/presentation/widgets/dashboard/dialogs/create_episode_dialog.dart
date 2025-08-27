@@ -17,38 +17,14 @@ class CreateEpisodeDialog extends ConsumerStatefulWidget {
 class _CreateEpisodeDialogState extends ConsumerState<CreateEpisodeDialog> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
-  final _durationController = TextEditingController();
-  int _episodeNumber = 1;
+  final _descriptionController = TextEditingController();
   bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.seriesId != null) {
-      // Get the next episode number for this series
-      _loadNextEpisodeNumber();
-    }
-  }
 
   @override
   void dispose() {
     _titleController.dispose();
-    _durationController.dispose();
+    _descriptionController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadNextEpisodeNumber() async {
-    try {
-      final episodes = await ref.read(creatorRepositoryProvider).getCreatorEpisodes(widget.seriesId!);
-      setState(() {
-        _episodeNumber = episodes.total + 1;
-      });
-    } catch (e) {
-      // If error, start with episode 1
-      setState(() {
-        _episodeNumber = 1;
-      });
-    }
   }
 
   @override
@@ -74,40 +50,19 @@ class _CreateEpisodeDialogState extends ConsumerState<CreateEpisodeDialog> {
               },
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _durationController,
-                    decoration: const InputDecoration(
-                      labelText: 'Duration (seconds)',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter duration';
-                      }
-                      final duration = int.tryParse(value);
-                      if (duration == null || duration <= 0) {
-                        return 'Please enter a valid duration';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: 'Episode Number',
-                      border: OutlineInputBorder(),
-                    ),
-                    readOnly: true,
-                    controller: TextEditingController(text: _episodeNumber.toString()),
-                  ),
-                ),
-              ],
+            TextFormField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter a description';
+                }
+                return null;
+              },
             ),
           ],
         ),
@@ -143,32 +98,19 @@ class _CreateEpisodeDialogState extends ConsumerState<CreateEpisodeDialog> {
     setState(() => _isLoading = true);
 
     try {
-      final request = CreateEpisodeRequest(
+      await ref.read(creatorRepositoryProvider).createEpisode(
         seriesId: widget.seriesId!,
         title: _titleController.text.trim(),
-        episodeNumber: _episodeNumber,
-        durationSeconds: int.tryParse(_durationController.text) ?? 0,
-      );
-
-      final accessToken = ref.read(accessTokenProvider);
-      final response = await ref.read(creatorRepositoryProvider).createEpisode(
-        seriesId: request.seriesId,
-        title: request.title,
-        episodeNumber: request.episodeNumber,
-        durationSeconds: request.durationSeconds,
-        thumbUrl: request.thumbUrl,
-        accessToken: accessToken,
+        description: _descriptionController.text.trim(),
       );
       
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Episode created successfully! ID: ${response.id}'),
+          const SnackBar(
+            content: Text('Episode created successfully!'),
           ),
         );
-        // Show upload dialog
-        _showUploadDialog(response.id);
       }
     } catch (e) {
       if (mounted) {
@@ -181,12 +123,5 @@ class _CreateEpisodeDialogState extends ConsumerState<CreateEpisodeDialog> {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  void _showUploadDialog(String episodeId) {
-    showDialog(
-      context: context,
-      builder: (context) => UploadEpisodeDialog(episodeId: episodeId),
-    );
   }
 }

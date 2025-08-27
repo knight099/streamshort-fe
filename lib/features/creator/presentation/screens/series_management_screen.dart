@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/creator_models.dart';
 
 import '../../data/providers.dart';
+import '../widgets/dashboard/dialogs/add_episode_dialog.dart';
 
 class SeriesManagementScreen extends ConsumerStatefulWidget {
   final String seriesId;
@@ -431,11 +432,15 @@ class _SeriesManagementScreenState extends ConsumerState<SeriesManagementScreen>
     );
   }
 
-  void _showCreateEpisodeDialog(BuildContext context) {
-    // TODO: Implement episode creation
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Episode creation coming soon!')),
+  Future<void> _showCreateEpisodeDialog(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AddEpisodeDialog(seriesId: widget.seriesId),
     );
+
+    if (result == true && mounted) {
+      _loadSeriesData();
+    }
   }
 
   void _showEditEpisodeDialog(BuildContext context, CreatorEpisode episode) {

@@ -50,13 +50,27 @@ class _EditCreatorProfileDialogState extends ConsumerState<EditCreatorProfileDia
       }
 
       final creatorRepo = ref.read(creatorRepositoryProvider);
-      final updatedProfile = await creatorRepo.updateCreatorProfile(
+      await creatorRepo.updateCreatorProfile(
         displayName: _displayNameController.text.trim(),
         bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
         accessToken: accessToken,
       );
+
+      final updatedProfile = widget.creatorProfile.copyWith(
+        displayName: _displayNameController.text.trim(),
+        bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
+      );
       
-      widget.onProfileUpdated(updatedProfile);
+      if (mounted) {
+        widget.onProfileUpdated(updatedProfile);
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

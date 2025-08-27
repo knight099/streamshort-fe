@@ -61,6 +61,32 @@ class CreatorProfile {
   bool get isVerified => kycStatus == 'verified';
   bool get isPending => kycStatus == 'pending';
   bool get isRejected => kycStatus == 'rejected';
+
+  CreatorProfile copyWith({
+    String? id,
+    String? userId,
+    String? displayName,
+    String? bio,
+    String? kycStatus,
+    String? kycDocumentS3Path,
+    Map<String, dynamic>? payoutDetails,
+    double? rating,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return CreatorProfile(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      displayName: displayName ?? this.displayName,
+      bio: bio ?? this.bio,
+      kycStatus: kycStatus ?? this.kycStatus,
+      kycDocumentS3Path: kycDocumentS3Path ?? this.kycDocumentS3Path,
+      payoutDetails: payoutDetails ?? this.payoutDetails,
+      rating: rating ?? this.rating,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }
 
 @JsonSerializable()

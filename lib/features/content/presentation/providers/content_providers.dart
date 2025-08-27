@@ -37,6 +37,7 @@ class ContentNotifier extends StateNotifier<ContentState> {
   Future<void> loadSeries({
     String? category,
     String? language,
+    bool? includeAdultContent,
     bool refresh = false,
   }) async {
     try {
@@ -47,6 +48,7 @@ class ContentNotifier extends StateNotifier<ContentState> {
       final response = await _repository.getPublishedSeries(
         page: 1,
         limit: 20,
+        includeAdultContent: includeAdultContent,
       );
 
       state = ContentLoaded(
@@ -62,6 +64,7 @@ class ContentNotifier extends StateNotifier<ContentState> {
   Future<void> loadMoreSeries({
     String? category,
     String? language,
+    bool? includeAdultContent,
   }) async {
     if (state is! ContentLoaded) return;
 
@@ -73,6 +76,7 @@ class ContentNotifier extends StateNotifier<ContentState> {
       final response = await _repository.getPublishedSeries(
         page: nextPage,
         limit: 20,
+        includeAdultContent: includeAdultContent,
       );
 
       state = ContentLoaded(
@@ -134,3 +138,6 @@ final contentLoadingProvider = Provider<bool>((ref) {
   final contentState = ref.watch(contentNotifierProvider);
   return contentState is ContentLoading;
 });
+
+// Adult content filter provider
+final adultContentFilterProvider = StateProvider<bool>((ref) => false);
