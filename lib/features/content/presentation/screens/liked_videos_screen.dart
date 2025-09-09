@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/api/api_client.dart';
+import '../../data/models/content_models.dart';
 import '../../data/providers.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import 'series_detail_screen.dart';
@@ -121,7 +121,7 @@ class _LikedVideosScreenState extends ConsumerState<LikedVideosScreen> {
               child: series.thumbnailUrl == null
                   ? Center(
                       child: Text(
-                        series.title[0].toUpperCase(),
+                        (series.title ?? 'U')[0].toUpperCase(),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 32,
@@ -137,12 +137,12 @@ class _LikedVideosScreenState extends ConsumerState<LikedVideosScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    series.title,
+                    series.title ?? 'Untitled',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    series.synopsis,
+                    series.synopsis ?? 'No description available',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium,
@@ -151,13 +151,13 @@ class _LikedVideosScreenState extends ConsumerState<LikedVideosScreen> {
                   Row(
                     children: [
                       Chip(
-                        label: Text(series.language.toUpperCase()),
+                        label: Text((series.language ?? 'Unknown').toUpperCase()),
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         labelStyle: const TextStyle(color: Colors.white),
                       ),
                       const SizedBox(width: 8),
                       Chip(
-                        label: Text(series.priceType.toUpperCase()),
+                        label: Text((series.priceType ?? 'Unknown').toUpperCase()),
                         backgroundColor: series.isFree
                             ? Colors.green
                             : Theme.of(context).colorScheme.secondary,

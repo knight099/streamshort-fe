@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:streamshort/core/api/api_client.dart';
+import 'package:streamshort/features/content/data/models/content_models.dart';
 import '../../data/repositories/content_repository.dart';
 import '../../data/providers.dart';
 

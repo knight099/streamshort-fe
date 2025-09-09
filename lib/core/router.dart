@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:streamshort/features/auth/presentation/screens/login_screen.dart';
-import 'package:streamshort/features/auth/presentation/screens/otp_verification_screen.dart';
 import 'package:streamshort/features/content/presentation/screens/episode_player_screen.dart';
 import 'package:streamshort/features/content/presentation/screens/home_screen.dart';
 import 'package:streamshort/features/content/presentation/screens/series_detail_screen.dart';
-import 'package:streamshort/features/creator/presentation/screens/creator_dashboard_screen.dart';
 import 'package:streamshort/features/creator/presentation/screens/creator_onboarding_screen.dart';
 import 'package:streamshort/features/creator/presentation/screens/series_management_screen.dart';
 import 'package:streamshort/features/profile/presentation/screens/profile_screen.dart';
@@ -21,14 +19,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/',
         name: 'login',
         builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/otp-verification',
-        name: 'otp-verification',
-        builder: (context, state) {
-          final phone = state.queryParameters['phone'] ?? '';
-          return OtpVerificationScreen(phone: phone);
-        },
       ),
       
       // Main App Routes
@@ -50,7 +40,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'episode-player',
         builder: (context, state) {
           final episodeId = state.pathParameters['id'] ?? '';
-          return EpisodePlayerScreen(episodeId: episodeId);
+          final seriesId = state.pathParameters['seriesId'] ?? '';
+          return EpisodePlayerScreen(
+            episodeId: episodeId,
+            seriesId: seriesId,
+          );
         },
       ),
       
@@ -59,11 +53,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/creator/onboarding',
         name: 'creator-onboarding',
         builder: (context, state) => const CreatorOnboardingScreen(),
-      ),
-      GoRoute(
-        path: '/creator/dashboard',
-        name: 'creator-dashboard',
-        builder: (context, state) => const CreatorDashboardScreen(),
       ),
       GoRoute(
         path: '/creator/series',
@@ -82,10 +71,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/subscription',
         name: 'subscription',
-        builder: (context, state) {
-          final seriesId = state.queryParameters['seriesId'] ?? '';
-          return SubscriptionScreen(seriesId: seriesId);
-        },
+        builder: (context, state) => const SubscriptionScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

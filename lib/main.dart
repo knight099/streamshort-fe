@@ -5,7 +5,8 @@ import 'core/providers.dart';
 import 'core/theme.dart';
 import 'features/auth/presentation/providers/auth_providers.dart';
 import 'features/content/presentation/providers/content_providers.dart';
-import 'core/api/api_client.dart';
+import 'features/content/data/models/content_models.dart';
+import 'core/api/api_client.dart' as api;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'features/creator/presentation/screens/creator_onboarding_screen.dart';
@@ -369,7 +370,7 @@ class UserProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
-  User? _user;
+  api.User? _user;
   bool _isLoading = true;
   String? _error;
   bool _isSavingProfile = false;
@@ -423,7 +424,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
 
       // If not authenticated, show demo data
       setState(() {
-        _user = User(
+        _user = api.User(
           id: 'demo_user_1',
           phone: '+919876543210',
           displayName: 'John Doe',
@@ -449,7 +450,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
     
     // Update local user state if auth user changes
     if (authUser != null && (_user == null || _user!.id != authUser.id)) {
-      _user = authUser;
+      _user = authUser as api.User?;
     }
     
     if (_isLoading) {
@@ -2043,14 +2044,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  series.title,
+                  series.title ?? 'Untitled',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  series.synopsis,
+                  series.synopsis ?? 'No description available',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -2068,7 +2069,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                     ),
                     Chip(
-                      label: Text(series.language),
+                      label: Text(series.language ?? 'Unknown'),
                       backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
                     ),
                     Chip(
@@ -2225,7 +2226,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            s.title,
+                            s.title ?? 'Untitled',
                             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -2236,7 +2237,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            s.synopsis,
+                            s.synopsis ?? 'No description available',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -2346,7 +2347,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              s.title,
+              s.title ?? 'Untitled',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

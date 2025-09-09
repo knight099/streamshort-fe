@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/api/api_client.dart';
+import '../../data/models/content_models.dart';
 import '../../data/providers.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../auth/data/models/auth_models.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
 import '../../../subscription/presentation/providers/subscription_providers.dart';
 import '../../../subscription/presentation/widgets/subscription_dialog.dart';
+import 'episode_player_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -116,10 +117,23 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
       }
     }
 
-    // TODO: Navigate to episode player screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Episode player coming soon!')),
-    );
+    // Navigate to reels-like episode player
+    if (_series != null && _series!.episodes != null && _series!.episodes!.isNotEmpty) {
+      final episodeIndex = _series!.episodes!.indexWhere((e) => e.id == episode.id);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EpisodePlayerScreen(
+            episodeId: episode.id,
+            seriesId: _series!.id,
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No episodes to play.')),
+      );
+    }
   }
 
   @override
@@ -197,7 +211,7 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _series!.title,
+                _series!.title ?? 'Untitled',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -205,7 +219,7 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _series!.synopsis,
+                _series!.synopsis ?? 'No description available',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Colors.white,
                     ),
@@ -214,13 +228,13 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
               Row(
                 children: [
                   Chip(
-                    label: Text(_series!.language.toUpperCase()),
+                    label: Text((_series!.language ?? 'Unknown').toUpperCase()),
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     labelStyle: const TextStyle(color: Colors.white),
                   ),
                   const SizedBox(width: 8),
                   Chip(
-                    label: Text(_series!.priceType.toUpperCase()),
+                    label: Text((_series!.priceType ?? 'Unknown').toUpperCase()),
                     backgroundColor: _series!.isFree
                         ? Colors.green
                         : Theme.of(context).colorScheme.secondary,
@@ -286,7 +300,7 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
   }
 
   Widget _buildEpisodeCard(BuildContext context, Episode episode) {
-    final duration = Duration(seconds: episode.durationSeconds);
+    final duration = Duration(seconds: episode.durationSeconds ?? 0);
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
     final durationText = '$minutes:${seconds.toString().padLeft(2, '0')}';
@@ -331,7 +345,7 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      episode.title,
+                      episode.title ?? 'Untitled Episode',
                       style: Theme.of(context).textTheme.titleMedium,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
