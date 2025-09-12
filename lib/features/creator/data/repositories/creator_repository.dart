@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/api/api_client.dart';
 import '../models/creator_models.dart';
 import '../models/episode_update_request.dart';
+import '../models/follow_models.dart';
 
 class CreatorRepository {
   final ApiClient _apiClient;
@@ -469,6 +470,119 @@ class CreatorRepository {
       throw _handleError(e);
     } catch (e) {
       throw Exception('Failed to update creator profile: $e');
+    }
+  }
+
+  // Follow/Unfollow methods
+  Future<FollowResponse> followCreator({
+    required String creatorId,
+    String? accessToken,
+  }) async {
+    try {
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+      
+      final resp = await _dio.post('api/creators/$creatorId/follow');
+      if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) {
+        final data = resp.data;
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data as Map);
+          return FollowResponse.fromJson(map);
+        }
+        throw Exception('Unexpected response format');
+      }
+      final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to follow creator';
+      throw Exception(msg.toString());
+    } on DioException catch (e) {
+      throw _handleError(e);
+    } catch (e) {
+      throw Exception('Failed to follow creator: $e');
+    }
+  }
+
+  Future<FollowResponse> unfollowCreator({
+    required String creatorId,
+    String? accessToken,
+  }) async {
+    try {
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+      
+      final resp = await _dio.delete('api/creators/$creatorId/follow');
+      if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) {
+        final data = resp.data;
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data as Map);
+          return FollowResponse.fromJson(map);
+        }
+        throw Exception('Unexpected response format');
+      }
+      final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to unfollow creator';
+      throw Exception(msg.toString());
+    } on DioException catch (e) {
+      throw _handleError(e);
+    } catch (e) {
+      throw Exception('Failed to unfollow creator: $e');
+    }
+  }
+
+  Future<FollowingCheckResponse> checkFollowing({
+    required String creatorId,
+    String? accessToken,
+  }) async {
+    try {
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+      
+      final resp = await _dio.get('api/creators/$creatorId/following');
+      if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) {
+        final data = resp.data;
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data as Map);
+          return FollowingCheckResponse.fromJson(map);
+        }
+        throw Exception('Unexpected response format');
+      }
+      final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to check following status';
+      throw Exception(msg.toString());
+    } on DioException catch (e) {
+      throw _handleError(e);
+    } catch (e) {
+      throw Exception('Failed to check following status: $e');
+    }
+  }
+
+  Future<FollowingListResponse> getFollowingList({
+    int page = 1,
+    int limit = 20,
+    String? accessToken,
+  }) async {
+    try {
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+      
+      final resp = await _dio.get('api/me/following', queryParameters: {
+        'page': page,
+        'limit': limit,
+      });
+      if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) {
+        final data = resp.data;
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data as Map);
+          return FollowingListResponse.fromJson(map);
+        }
+        throw Exception('Unexpected response format');
+      }
+      final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to fetch following list';
+      throw Exception(msg.toString());
+    } on DioException catch (e) {
+      throw _handleError(e);
+    } catch (e) {
+      throw Exception('Failed to fetch following list: $e');
     }
   }
 

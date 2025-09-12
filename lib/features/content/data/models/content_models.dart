@@ -33,6 +33,9 @@ class Series {
   @JsonKey(name: 'view_count')
   final int? viewCount;
   final double? rating;
+  @JsonKey(name: 'follower_count')
+  final int? followerCount;
+  final bool? following;
 
   const Series({
     required this.id,
@@ -53,6 +56,8 @@ class Series {
     this.episodeCount,
     this.viewCount,
     this.rating,
+    this.followerCount,
+    this.following,
   });
 
   factory Series.fromJson(Map<String, dynamic> json) => _$SeriesFromJson(json);
@@ -66,6 +71,19 @@ class Series {
   int get episodeCountValue => episodeCount ?? episodes?.length ?? 0;
   int get viewCountValue => viewCount ?? 0;
   double get ratingValue => rating ?? 0.0;
+  int get followerCountValue => followerCount ?? 0;
+  bool get isFollowing => following ?? false;
+  
+  String get followerCountFormatted {
+    final count = followerCountValue;
+    if (count >= 1000000) {
+      return '${(count / 1000000).toStringAsFixed(1)}M';
+    } else if (count >= 1000) {
+      return '${(count / 1000).toStringAsFixed(1)}K';
+    } else {
+      return count.toString();
+    }
+  }
 }
 
 @JsonSerializable()

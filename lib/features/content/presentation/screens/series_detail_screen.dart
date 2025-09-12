@@ -7,6 +7,7 @@ import '../../../auth/data/models/auth_models.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
 import '../../../subscription/presentation/providers/subscription_providers.dart';
 import '../../../subscription/presentation/widgets/subscription_dialog.dart';
+import '../../../creator/presentation/widgets/follow_button.dart';
 import 'episode_player_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
@@ -166,6 +167,8 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
                         children: [
                           _buildSeriesHeader(context),
                           const SizedBox(height: 24),
+                          _buildCreatorSection(context),
+                          const SizedBox(height: 24),
                           _buildEpisodesList(context),
                         ],
                       ),
@@ -264,6 +267,29 @@ class _SeriesDetailScreenState extends ConsumerState<SeriesDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCreatorSection(BuildContext context) {
+    if (_series == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: FollowButton(
+            creatorId: _series!.creatorId,
+            creatorName: _series!.creatorName ?? 'Unknown Creator',
+            followerCount: _series!.followerCountValue,
+            isFollowing: _series!.isFollowing,
+            onFollowChanged: () {
+              // Refresh series data to get updated follower count
+              _loadSeries();
+            },
+          ),
+        ),
+      ),
     );
   }
 

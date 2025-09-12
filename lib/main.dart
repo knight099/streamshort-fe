@@ -16,6 +16,7 @@ import 'features/content/presentation/screens/liked_videos_screen.dart';
 import 'features/content/presentation/screens/search_screen.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
 import 'features/creator/presentation/screens/dashboard/creator_dashboard_screen.dart';
+import 'features/creator/presentation/screens/following_screen.dart';
 import 'features/subscription/presentation/screens/subscription_management_screen.dart';
 
 
@@ -449,7 +450,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
     final user = authUser;
     
     // Debug logging
-    print('UserProfileScreen build - user role: ${user?.role}');
+    // print('UserProfileScreen build - user role: ${user?.role}');
     
     if (_isLoading) {
       return Scaffold(
@@ -667,6 +668,19 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const SubscriptionManagementScreen(),
+                  ),
+                );
+              },
+            ),
+            _buildActionButton(
+              context,
+              'Following',
+              Icons.people,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const FollowingScreen(),
                   ),
                 );
               },
