@@ -13,6 +13,8 @@ import 'features/creator/presentation/screens/creator_onboarding_screen.dart';
 import 'features/creator/data/models/creator_models.dart';
 import 'features/content/presentation/screens/series_detail_screen.dart';
 import 'features/content/presentation/screens/liked_videos_screen.dart';
+import 'features/content/presentation/screens/search_screen.dart';
+import 'features/auth/presentation/screens/splash_screen.dart';
 import 'features/creator/presentation/screens/dashboard/creator_dashboard_screen.dart';
 import 'features/subscription/presentation/screens/subscription_management_screen.dart';
 
@@ -37,6 +39,12 @@ class StreamshortApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final authState = ref.watch(authNotifierProvider);
+    
+    // Initialize auth restoration on first build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authNotifierProvider.notifier).restoreAuth();
+    });
     
     return MaterialApp(
       title: 'Streamshort',
@@ -44,7 +52,7 @@ class StreamshortApp extends ConsumerWidget {
       themeMode: themeMode,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      home: const LoginScreen(),
+      home: authState is AuthAuthenticated ? const HomeScreen() : const LoginScreen(),
     );
   }
 }
@@ -370,7 +378,6 @@ class UserProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
-  api.User? _user;
   bool _isLoading = true;
   String? _error;
   bool _isSavingProfile = false;
@@ -403,7 +410,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
               print('Creator profile found! Updating user role to creator');
               // User has a creator profile, update their role
               await ref.read(authNotifierProvider.notifier).updateUserRole('creator');
-              // The auth state will be updated automatically, no need to manually refresh
+              print('User role updated to creator');
             } else {
               print('No creator profile found');
             }
@@ -416,7 +423,6 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
         }
         
         setState(() {
-          _user = authUser;
           _isLoading = false;
         });
         return;
@@ -424,15 +430,6 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
 
       // If not authenticated, show demo data
       setState(() {
-        _user = api.User(
-          id: 'demo_user_1',
-          phone: '+919876543210',
-          displayName: 'John Doe',
-          avatarUrl: null,
-          role: 'creator', // This user has completed creator onboarding
-          createdAt: DateTime.now().subtract(const Duration(days: 30)),
-          lastLoginAt: DateTime.now(),
-        );
         _isLoading = false;
       });
     } catch (e) {
@@ -448,10 +445,11 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
     // Watch the auth user to automatically update when role changes
     final authUser = ref.watch(authUserProvider);
     
-    // Update local user state if auth user changes
-    if (authUser != null && (_user == null || _user!.id != authUser.id)) {
-      _user = authUser as api.User?;
-    }
+    // Use auth user directly instead of local state
+    final user = authUser;
+    
+    // Debug logging
+    print('UserProfileScreen build - user role: ${user?.role}');
     
     if (_isLoading) {
       return Scaffold(
@@ -531,10 +529,10 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: Theme.of(context).colorScheme.primary,
-                      child: _user?.avatarUrl != null
+                      child: user?.avatarUrl != null
                           ? ClipOval(
                               child: CachedNetworkImage(
-                                imageUrl: _user!.avatarUrl!,
+                                imageUrl: user!.avatarUrl!,
                                 width: 80,
                                 height: 80,
                                 fit: BoxFit.cover,
@@ -562,14 +560,14 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _user?.displayName ?? 'User',
+                            user?.displayName ?? 'User',
                             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            _user?.role == 'premium' ? 'Premium Member' : 'Free Member',
+                            user?.role == 'premium' ? 'Premium Member' : 'Free Member',
                             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                               color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.w500,
@@ -577,7 +575,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Member since ${_user?.createdAt != null ? _formatDate(_user!.createdAt) : 'Unknown'}',
+                            'Member since ${user?.createdAt != null ? _formatDate(user!.createdAt) : 'Unknown'}',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
@@ -697,7 +695,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
             ),
             const SizedBox(height: 8),
             // Creator actions - only show if user is a creator
-            if (_user?.role == 'creator') ...[
+            if (user?.role == 'creator') ...[
               Text(
                 'Creator',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -751,8 +749,9 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
   }
 
   Future<void> _openEditProfileSheet() async {
-    if (_user == null) return;
-            final nameController = TextEditingController(text: _user?.displayName ?? '');
+    final authUser = ref.read(authUserProvider);
+    if (authUser == null) return;
+    final nameController = TextEditingController(text: authUser.displayName ?? '');
 
     await showModalBottomSheet(
       context: context,
@@ -795,7 +794,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                               displayName: nameController.text.trim().isEmpty ? null : nameController.text.trim(),
                             );
                             if (mounted) {
-                              setState(() => _user = updated);
+                              // Profile updated successfully, the auth state will be updated automatically
                               Navigator.pop(ctx);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Profile updated')),
@@ -1783,9 +1782,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              // TODO: Implement search
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Search functionality coming soon!')),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SearchScreen(),
+                ),
               );
             },
           ),

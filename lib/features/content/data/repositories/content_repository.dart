@@ -88,4 +88,36 @@ class ContentRepository {
       throw Exception('Failed to fetch manifest: $e');
     }
   }
+
+  Future<SeriesListResponse> searchSeries({
+    required String query,
+    int page = 1,
+    int limit = 20,
+    String? category,
+    String? language,
+    String? priceType,
+    String? accessToken,
+  }) async {
+    try {
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+
+      final response = await _dio.get(
+        '/content/series/search',
+        queryParameters: {
+          'q': query,
+          'page': page,
+          'limit': limit,
+          if (category != null && category.isNotEmpty) 'category': category,
+          if (language != null && language.isNotEmpty) 'language': language,
+          if (priceType != null && priceType.isNotEmpty) 'price_type': priceType,
+        },
+      );
+
+      return SeriesListResponse.fromJson(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw Exception('Failed to search series: $e');
+    }
+  }
 }

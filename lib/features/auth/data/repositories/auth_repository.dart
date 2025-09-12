@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../../../core/api/api_client.dart';
+import '../../../../core/storage/token_storage.dart';
+import '../../presentation/providers/auth_providers.dart';
 
 class AuthRepository {
   final ApiClient _apiClient;
@@ -40,6 +42,8 @@ class AuthRepository {
         final data = resp.data is Map ? Map<String, dynamic>.from(resp.data as Map) : <String, dynamic>{};
         final accessToken = (data['access_token'] ?? data['accessToken'] ?? '').toString();
         final refreshToken = (data['refresh_token'] ?? data['refreshToken'] ?? '').toString();
+        final expiresIn = int.tryParse(data['expires_in']?.toString() ?? '3600') ?? 3600;
+        
         if (accessToken.isNotEmpty) {
           _dio.options.headers['Authorization'] = 'Bearer $accessToken';
         }
@@ -53,6 +57,15 @@ class AuthRepository {
           createdAt: DateTime.now(),
           lastLoginAt: DateTime.now(),
         );
+        
+        // Save authentication data to storage
+        await TokenStorage.saveAuthData(
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          user: user,
+          expiresIn: expiresIn,
+        );
+        
         return TokenResponse(accessToken: accessToken, refreshToken: refreshToken, user: user);
       }
       throw Exception('Failed to verify OTP: ${resp.statusCode}');
@@ -73,6 +86,10 @@ class AuthRepository {
       }
       
       // Update stored tokens
+      await TokenStorage.updateAccessToken(
+        accessToken: response.accessToken,
+        expiresIn: response.expiresIn ?? 3600,
+      );
       
       return response;
     } on DioException catch (e) {
@@ -84,7 +101,36 @@ class AuthRepository {
 
   Future<void> logout() async {
     // Clear stored tokens
-    // You can use secure storage here
+    await TokenStorage.clearAuthData();
+    _dio.options.headers.remove('Authorization');
+  }
+
+  // Load stored authentication data
+  Future<AuthState?> loadStoredAuth() async {
+    try {
+      final isAuthenticated = await TokenStorage.isAuthenticated();
+      if (!isAuthenticated) return null;
+
+      final accessToken = await TokenStorage.getAccessToken();
+      final refreshToken = await TokenStorage.getRefreshToken();
+      final user = await TokenStorage.getUserData();
+
+      if (accessToken != null && refreshToken != null && user != null) {
+        // Set authorization header
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+        
+        return AuthAuthenticated(
+          user: user,
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+        );
+      }
+      return null;
+    } catch (e) {
+      // If there's an error loading stored auth, clear it
+      await logout();
+      return null;
+    }
   }
 
   Future<void> updateUserRole(String newRole) async {
@@ -95,6 +141,30 @@ class AuthRepository {
       // await _dio.put('api/users/role', data: {'role': newRole});
     } catch (e) {
       throw Exception('Failed to update user role: $e');
+    }
+  }
+
+  Future<void> updateStoredUserRole(String newRole) async {
+    try {
+      // Get the current user data from storage
+      final user = await TokenStorage.getUserData();
+      if (user != null) {
+        // Create updated user with new role
+        final updatedUser = User(
+          id: user.id,
+          phone: user.phone,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          role: newRole,
+          createdAt: user.createdAt,
+          lastLoginAt: user.lastLoginAt,
+        );
+        
+        // Update the stored user data
+        await TokenStorage.updateUserData(updatedUser);
+      }
+    } catch (e) {
+      throw Exception('Failed to update stored user role: $e');
     }
   }
 

@@ -120,8 +120,14 @@ class TokenResponse {
   final String accessToken;
   final String refreshToken;
   final User user;
+  final int? expiresIn;
 
-  TokenResponse({required this.accessToken, required this.refreshToken, required this.user});
+  TokenResponse({
+    required this.accessToken, 
+    required this.refreshToken, 
+    required this.user,
+    this.expiresIn,
+  });
 
   factory TokenResponse.fromJson(Map<String, dynamic> json) => _$TokenResponseFromJson(json);
   Map<String, dynamic> toJson() => _$TokenResponseToJson(this);

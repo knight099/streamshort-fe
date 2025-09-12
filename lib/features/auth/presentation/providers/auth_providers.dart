@@ -125,6 +125,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           lastLoginAt: currentState.user.lastLoginAt,
         );
         
+        // Update the stored user data with the new role
+        await _authRepository.updateStoredUserRole(newRole);
+        
         state = AuthAuthenticated(
           user: updatedUser,
           accessToken: currentState.accessToken,
@@ -133,6 +136,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } catch (e) {
       // Handle error if needed
+      print('Error updating user role: $e');
+    }
+  }
+
+  // Restore authentication from storage
+  Future<void> restoreAuth() async {
+    try {
+      state = const AuthLoading();
+      final storedAuth = await _authRepository.loadStoredAuth();
+      
+      if (storedAuth != null) {
+        state = storedAuth;
+      } else {
+        state = const AuthUnauthenticated();
+      }
+    } catch (e) {
+      state = const AuthUnauthenticated();
     }
   }
 }
