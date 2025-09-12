@@ -6,21 +6,28 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../data/models/creator_models.dart';
 import '../../../../../auth/presentation/providers/auth_providers.dart';
 import '../../../../data/providers.dart';
+import 'add_episode_dialog.dart';
 
-class UploadEpisodeDialog extends ConsumerStatefulWidget {
-  final String episodeId;
+class UploadVideoDialog extends ConsumerStatefulWidget {
+  final String seriesId;
 
-  const UploadEpisodeDialog({super.key, required this.episodeId});
+  const UploadVideoDialog({
+    super.key,
+    required this.seriesId,
+  });
 
   @override
-  ConsumerState<UploadEpisodeDialog> createState() => _UploadEpisodeDialogState();
+  ConsumerState<UploadVideoDialog> createState() => _UploadVideoDialogState();
 }
 
-class _UploadEpisodeDialogState extends ConsumerState<UploadEpisodeDialog> {
+class _UploadVideoDialogState extends ConsumerState<UploadVideoDialog> {
   bool _isLoading = false;
   String? _selectedFilePath;
   int? _fileSize;
   String? _contentType;
+  double _uploadProgress = 0.0;
+  String? _error;
+  String? _manifestUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +36,16 @@ class _UploadEpisodeDialogState extends ConsumerState<UploadEpisodeDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(
+                _error!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+            ),
           const Text('Select a video file to upload for this episode.'),
           const SizedBox(height: 16),
           if (_selectedFilePath != null) ...[
@@ -36,6 +53,8 @@ class _UploadEpisodeDialogState extends ConsumerState<UploadEpisodeDialog> {
             Text('Size: ${(_fileSize! / (1024 * 1024)).toStringAsFixed(2)} MB'),
             Text('Type: $_contentType'),
             const SizedBox(height: 16),
+            if (_isLoading)
+              LinearProgressIndicator(value: _uploadProgress),
           ],
           Row(
             children: [
@@ -90,12 +109,13 @@ class _UploadEpisodeDialogState extends ConsumerState<UploadEpisodeDialog> {
           _selectedFilePath = file.name;
           _fileSize = file.size;
           _contentType = file.extension != null ? 'video/${file.extension}' : 'video/mp4';
+          _error = null;
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking file: $e')),
-      );
+      setState(() {
+        _error = 'Error picking file: $e';
+      });
     }
   }
 
@@ -111,19 +131,24 @@ class _UploadEpisodeDialogState extends ConsumerState<UploadEpisodeDialog> {
           _selectedFilePath = video.name;
           _fileSize = stat.size;
           _contentType = 'video/mp4';
+          _error = null;
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error recording video: $e')),
-      );
+      setState(() {
+        _error = 'Error recording video: $e';
+      });
     }
   }
 
   Future<void> _uploadVideo() async {
     if (_selectedFilePath == null || _fileSize == null || _contentType == null) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _uploadProgress = 0.0;
+    });
 
     try {
       // Get upload URL
@@ -133,7 +158,7 @@ class _UploadEpisodeDialogState extends ConsumerState<UploadEpisodeDialog> {
         contentType: _contentType!,
         sizeBytes: _fileSize!,
         metadata: {
-          'series_id': widget.episodeId,
+          'series_id': widget.seriesId,
         },
         accessToken: accessToken,
       );
@@ -143,32 +168,40 @@ class _UploadEpisodeDialogState extends ConsumerState<UploadEpisodeDialog> {
       final uploadId = uploadUrlResponse['upload_id'] as String;
 
       // TODO: Implement actual file upload to S3 using the presigned URL
-      // For now, we'll just simulate upload completion
-      await Future.delayed(const Duration(seconds: 2));
+      // For now, we'll just simulate upload progress
+      for (var i = 0; i <= 100; i += 10) {
+        if (!mounted) return;
+        setState(() {
+          _uploadProgress = i / 100;
+        });
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
       
       // Notify upload complete
-      await ref.read(creatorRepositoryProvider).notifyUploadComplete(
+      final response = await ref.read(creatorRepositoryProvider).notifyUploadComplete(
         uploadId: uploadId,
-        s3Path: 's3://streamshort-episodes/${widget.episodeId}_${DateTime.now().millisecondsSinceEpoch}.mp4',
+        s3Path: 's3://streamshort-episodes/${widget.seriesId}_${DateTime.now().millisecondsSinceEpoch}.mp4',
         sizeBytes: _fileSize!,
         accessToken: accessToken,
       );
 
+      // Extract manifest URL from response
+      _manifestUrl = response['manifest_url'] as String;
+
       if (mounted) {
-        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Video uploaded successfully!')),
         );
+        Navigator.pop(context, {
+          'manifest_url': _manifestUrl,
+        });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error uploading video: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _error = 'Error uploading video: $e';
+          _isLoading = false;
+        });
       }
     }
   }

@@ -9,6 +9,8 @@ import '../../widgets/dashboard/series_tab.dart';
 import '../../widgets/dashboard/episodes_tab.dart';
 import '../series_management_screen.dart';
 import '../../widgets/dashboard/dialogs/index.dart';
+import '../../widgets/dashboard/dialogs/upload_video_dialog.dart';
+import '../../widgets/dashboard/dialogs/add_episode_dialog.dart';
 import '../../widgets/dashboard/edit_profile_dialog.dart';
 
 class CreatorDashboardScreen extends ConsumerStatefulWidget {
@@ -55,7 +57,7 @@ class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen>
       
       // Load dashboard data
       try {
-        final dashboard = await ref.read(creatorRepositoryProvider).getCreatorDashboard(accessToken: accessToken);
+        final dashboard = await ref.read(creatorRepositoryProvider).getCreatorDashboard(creatorId: profile.id, accessToken: accessToken);
         setState(() {
           _dashboardData = dashboard;
         });
@@ -100,11 +102,30 @@ class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen>
     }
   }
 
-  void _showCreateEpisodeDialog(BuildContext context, String? seriesId) {
-    showDialog(
+  void _showCreateEpisodeDialog(BuildContext context, String? seriesId) async {
+    if (seriesId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a series first')),
+      );
+      return;
+    }
+
+    // Show upload dialog first
+    final result = await showDialog<Map<String, String>>(
       context: context,
-      builder: (context) => CreateEpisodeDialog(seriesId: seriesId),
+      builder: (context) => UploadVideoDialog(seriesId: seriesId),
     );
+
+    // If upload was successful, show episode dialog with manifest URL
+    if (result != null && mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AddEpisodeDialog(
+          seriesId: seriesId,
+          manifestUrl: result['manifest_url'],
+        ),
+      );
+    }
   }
 
   void _showOnboardingDialog(BuildContext context) {
@@ -305,3 +326,4 @@ class _CreatorDashboardScreenState extends ConsumerState<CreatorDashboardScreen>
     );
   }
 }
+

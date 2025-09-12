@@ -93,17 +93,10 @@ class OverviewTab extends StatelessWidget {
         ),
         _buildStatCard(
           context,
-          'Total Series',
-          dashboardData!.totalSeriesSafe.toString(),
-          Icons.video_library,
+          'Followers',
+          dashboardData!.followerCountFormatted,
+          Icons.people,
           Colors.orange,
-        ),
-        _buildStatCard(
-          context,
-          'Total Episodes',
-          dashboardData!.totalEpisodesSafe.toString(),
-          Icons.play_circle,
-          Colors.purple,
         ),
         _buildStatCard(
           context,
@@ -111,13 +104,6 @@ class OverviewTab extends StatelessWidget {
           dashboardData!.earningsFormatted,
           Icons.monetization_on,
           Colors.amber,
-        ),
-        _buildStatCard(
-          context,
-          'Rating',
-          dashboardData!.averageRatingSafe.toStringAsFixed(1),
-          Icons.star,
-          Colors.red,
         ),
       ],
     );

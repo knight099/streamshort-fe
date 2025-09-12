@@ -4,6 +4,8 @@ import 'package:json_annotation/json_annotation.dart';
 import '../config/environment.dart';
 import '../../features/creator/data/models/creator_models.dart';
 import '../../features/subscription/data/models/subscription_models.dart';
+import '../../features/profile/data/models/profile_models.dart';
+import '../../features/auth/data/models/auth_models.dart';
 
 part 'api_client.g.dart';
 
@@ -53,7 +55,7 @@ abstract class ApiClient {
 
   // User endpoints
   @GET('api/profile')
-  Future<User> getUserProfile();
+  Future<UserProfileResponse> getUserProfile();
 
   @PUT('api/profile')
   Future<User> updateUserProfile(@Body() User user);
@@ -141,35 +143,6 @@ class RefreshRequest {
 
   factory RefreshRequest.fromJson(Map<String, dynamic> json) => _$RefreshRequestFromJson(json);
   Map<String, dynamic> toJson() => _$RefreshRequestToJson(this);
-}
-
-@JsonSerializable()
-class User {
-  final String id;
-  final String phone;
-  final String? displayName;
-  final String? avatarUrl;
-  final String role;
-  final DateTime createdAt;
-  final DateTime? lastLoginAt;
-  final String? accessToken;
-
-  User({
-    required this.id,
-    required this.phone,
-    this.displayName,
-    this.avatarUrl,
-    required this.role,
-    required this.createdAt,
-    this.lastLoginAt,
-    this.accessToken,
-  });
-
-  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
-  Map<String, dynamic> toJson() => _$UserToJson(this);
-
-  bool get isCreator => role == 'creator';
-  bool get isAdmin => role == 'admin';
 }
 
 // Content Models

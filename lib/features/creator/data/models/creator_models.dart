@@ -94,17 +94,13 @@ class CreatorDashboardResponse {
   final int views;
   final int watchTimeSeconds;
   final double earnings;
-  final int? totalEpisodes;
-  final int? totalSeries;
-  final double? averageRating;
+  final int? followerCount;
 
   const CreatorDashboardResponse({
     required this.views,
     required this.watchTimeSeconds,
     required this.earnings,
-    this.totalEpisodes,
-    this.totalSeries,
-    this.averageRating,
+    this.followerCount,
   });
 
   factory CreatorDashboardResponse.fromJson(Map<String, dynamic> json) =>
@@ -123,9 +119,14 @@ class CreatorDashboardResponse {
 
   String get earningsFormatted => '₹${earnings.toStringAsFixed(2)}';
   
-  int get totalEpisodesSafe => totalEpisodes ?? 0;
-  int get totalSeriesSafe => totalSeries ?? 0;
-  double get averageRatingSafe => averageRating ?? 0.0;
+  String get followerCountFormatted {
+    if (followerCount != null && followerCount! >= 1000000) {
+      return '${(followerCount! / 1000000).toStringAsFixed(1)}M';
+    } else if (followerCount != null && followerCount! >= 1000) {
+      return '${(followerCount! / 1000).toStringAsFixed(1)}K';
+    }
+    return followerCount?.toString() ?? '0';
+  }
 }
 
 // Series creation models

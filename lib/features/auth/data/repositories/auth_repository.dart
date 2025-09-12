@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/storage/token_storage.dart';
+import '../models/auth_models.dart';
 import '../../presentation/providers/auth_providers.dart';
 
 class AuthRepository {

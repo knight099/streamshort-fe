@@ -1066,7 +1066,13 @@ class _OldCreatorDashboardScreenState extends ConsumerState<OldCreatorDashboardS
 
       final repo = ref.read(creatorRepositoryProvider);
       final accessToken = ref.read(accessTokenProvider);
-      final data = await repo.getCreatorDashboard(accessToken: accessToken);
+      final user = ref.read(authUserProvider);
+
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final data = await repo.getCreatorDashboard(creatorId: user.id, accessToken: accessToken);
 
       setState(() {
         _dashboardData = data;
@@ -1160,21 +1166,8 @@ class _OldCreatorDashboardScreenState extends ConsumerState<OldCreatorDashboardS
                           child: _buildCreatorStat(
                             context,
                             'Total Series',
-                            '${_dashboardData!.totalSeries}',
+                            '${_dashboardData!.followerCountFormatted}',
                             Icons.people,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildCreatorStat(
-                            context,
-                            'Total Episodes',
-                            '${_dashboardData!.totalEpisodes}',
-                            Icons.favorite,
                           ),
                         ),
                         Expanded(
@@ -1206,7 +1199,7 @@ class _OldCreatorDashboardScreenState extends ConsumerState<OldCreatorDashboardS
               'My Series',
               'Manage your video series',
               Icons.video_library,
-              '${_dashboardData!.totalSeries} series',
+              'View Series',
             ),
             _buildContentCard(
               context,

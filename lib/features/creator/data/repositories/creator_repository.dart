@@ -1,12 +1,17 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../../core/api/api_client.dart';
 import '../models/creator_models.dart';
 import '../models/episode_update_request.dart';
 import '../models/follow_models.dart';
+import '../../../../core/config/environment.dart';
 
 class CreatorRepository {
-  final ApiClient _apiClient;
   final Dio _dio;
+  final ApiClient _apiClient;
 
   CreatorRepository(this._apiClient, this._dio);
 
@@ -34,18 +39,23 @@ class CreatorRepository {
     }
   }
 
-  Future<CreatorDashboardResponse> getCreatorDashboard({String? accessToken}) async {
+  Future<CreatorDashboardResponse> getCreatorDashboard({required String creatorId, String? accessToken}) async {
     try {
       if (accessToken != null && accessToken.isNotEmpty) {
         _dio.options.headers['Authorization'] = 'Bearer $accessToken';
       }
       
-      final resp = await _dio.get('api/creators/dashboard');
-      if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) {
+      final resp = await _dio.get('api/creators/${creatorId}/dashboard');
+      if (resp.statusCode == 200) {
         final data = resp.data;
         if (data is Map) {
           final map = Map<String, dynamic>.from(data as Map);
-          return _parseCreatorDashboard(map);
+          return CreatorDashboardResponse(
+            views: _asInt(map['views']),
+            watchTimeSeconds: _asInt(map['watch_time_seconds']),
+            earnings: _asDouble(map['earnings']),
+            followerCount: _asInt(map['follower_count']),
+          );
         }
         throw Exception('Unexpected response format');
       }
@@ -121,7 +131,7 @@ class CreatorRepository {
     }
   }
 
-  Future<void> createSeries({
+  Future<CreatorSeries> createSeries({
     required String title,
     required String synopsis,
     required String language,
@@ -152,8 +162,27 @@ class CreatorRepository {
         }),
       );
 
-      if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) {
-        return; // Success
+      if (resp.statusCode == 201) {
+        final data = resp.data;
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data as Map);
+          return CreatorSeries(
+            id: _asString(map['id']),
+            title: _asString(map['title']),
+            synopsis: _asString(map['synopsis']),
+            language: _asString(map['language']),
+            categoryTags: _asList(map['category_tags']),
+            priceType: _asString(map['price_type']),
+            priceAmount: map['price_amount'] != null ? _asDouble(map['price_amount']) : null,
+            thumbnailUrl: map['thumbnail_url'] != null ? _asString(map['thumbnail_url']) : null,
+            status: _asString(map['status']),
+            episodeCount: 0,
+            createdAt: _asDate(map['created_at']),
+            updatedAt: map['updated_at'] != null ? _asDate(map['updated_at']) : null,
+            episodes: [],
+          );
+        }
+        throw Exception('Unexpected response format');
       }
       final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to create series';
       throw Exception(msg.toString());
@@ -164,25 +193,48 @@ class CreatorRepository {
     }
   }
 
-  Future<void> createEpisode({
+  Future<String> createEpisode({
     required String seriesId,
     required String title,
-    required String description,
+    required int episodeNumber,
+    required int durationSeconds,
+    required String manifestUrl,
+    String? thumbUrl,
+    String? captionsUrl,
+    String? accessToken,
   }) async {
     try {
-      await _dio.post(
-        '/api/creators/episodes',
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+      
+      final resp = await _dio.post(
+        'api/content/series/$seriesId/episodes',
         data: {
-          'series_id': seriesId,
           'title': title,
-          'description': description,
+          'episode_number': episodeNumber,
+          'duration_seconds': durationSeconds,
+          'manifest_url': manifestUrl,
+          if (thumbUrl != null) 'thumb_url': thumbUrl,
+          if (captionsUrl != null) 'captions_url': captionsUrl,
         },
         options: Options(
           headers: {
-            'Authorization': 'Bearer ${await _getAccessToken()}',
+            'Content-Type': 'application/json',
           },
         ),
       );
+
+      if (resp.statusCode == 201) {
+        final data = resp.data;
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data as Map);
+          return _asString(map['id']);
+        }
+        throw Exception('Unexpected response format');
+      }
+      final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to create episode';
+      throw Exception(msg.toString());
     } on DioException catch (e) {
       throw _handleError(e);
     } catch (e) {
@@ -195,6 +247,8 @@ class CreatorRepository {
     required String title,
     required int episodeNumber,
     required int durationSeconds,
+    String? thumbUrl,
+    String? captionsUrl,
     String? accessToken,
   }) async {
     try {
@@ -202,12 +256,14 @@ class CreatorRepository {
         _dio.options.headers['Authorization'] = 'Bearer $accessToken';
       }
 
-      final response = await _dio.put(
-        '/api/content/episodes/$episodeId',
+      final resp = await _dio.put(
+        'api/content/episodes/$episodeId',
         data: {
           'title': title,
           'episode_number': episodeNumber,
           'duration_seconds': durationSeconds,
+          if (thumbUrl != null) 'thumb_url': thumbUrl,
+          if (captionsUrl != null) 'captions_url': captionsUrl,
         },
         options: Options(
           headers: {
@@ -216,9 +272,17 @@ class CreatorRepository {
         ),
       );
 
-      if (response.statusCode != 200) {
-        throw Exception('Failed to update episode');
+      if (resp.statusCode == 200) {
+        final data = resp.data;
+        if (data is Map && data['message'] != null) {
+          return; // Success
+        }
+        throw Exception('Unexpected response format');
       }
+      final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to update episode';
+      throw Exception(msg.toString());
+    } on DioException catch (e) {
+      throw _handleError(e);
     } catch (e) {
       throw Exception('Failed to update episode: $e');
     }
@@ -233,8 +297,8 @@ class CreatorRepository {
         _dio.options.headers['Authorization'] = 'Bearer $accessToken';
       }
 
-      final response = await _dio.delete(
-        '/api/content/episodes/$episodeId',
+      final resp = await _dio.delete(
+        'api/content/episodes/$episodeId',
         options: Options(
           headers: {
             'Content-Type': 'application/json',
@@ -242,9 +306,17 @@ class CreatorRepository {
         ),
       );
 
-      if (response.statusCode != 200) {
-        throw Exception('Failed to delete episode');
+      if (resp.statusCode == 200) {
+        final data = resp.data;
+        if (data is Map && data['message'] != null) {
+          return; // Success
+        }
+        throw Exception('Unexpected response format');
       }
+      final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to delete episode';
+      throw Exception(msg.toString());
+    } on DioException catch (e) {
+      throw _handleError(e);
     } catch (e) {
       throw Exception('Failed to delete episode: $e');
     }
@@ -256,18 +328,33 @@ class CreatorRepository {
     String? accessToken,
   }) async {
     try {
-      final response = await _dio.put(
-        '/api/content/episodes/$episodeId/status',
-        data: EpisodeUpdateRequest(status: status).toJson(),
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+
+      final resp = await _dio.put(
+        'api/content/episodes/$episodeId/status',
+        data: {
+          'status': status,
+        },
         options: Options(
           headers: {
-            if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
           },
         ),
       );
-      if (response.statusCode != 200) {
-        throw Exception('Failed to update episode status');
+
+      if (resp.statusCode == 200) {
+        final data = resp.data;
+        if (data is Map && data['message'] != null) {
+          return; // Success
+        }
+        throw Exception('Unexpected response format');
       }
+      final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to update episode status';
+      throw Exception(msg.toString());
+    } on DioException catch (e) {
+      throw _handleError(e);
     } catch (e) {
       throw Exception('Failed to update episode status: $e');
     }
@@ -281,28 +368,43 @@ class CreatorRepository {
     required List<String> categoryTags,
     required String priceType,
     double? priceAmount,
+    String? thumbnailUrl,
     String? accessToken,
   }) async {
     try {
-      final response = await _dio.put(
-        '/api/content/series/$seriesId',
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+      
+      final resp = await _dio.put(
+        'api/content/series/$seriesId',
         data: {
           'title': title,
           'synopsis': synopsis,
           'language': language,
           'category_tags': categoryTags,
           'price_type': priceType,
-          'price_amount': priceAmount,
+          if (priceAmount != null) 'price_amount': priceAmount,
+          if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
         },
         options: Options(
           headers: {
-            if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
           },
         ),
       );
-      if (response.statusCode != 200) {
-        throw Exception('Failed to update series');
+
+      if (resp.statusCode == 200) {
+        final data = resp.data;
+        if (data is Map && data['message'] != null) {
+          return; // Success
+        }
+        throw Exception('Unexpected response format');
       }
+      final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to update series';
+      throw Exception(msg.toString());
+    } on DioException catch (e) {
+      throw _handleError(e);
     } catch (e) {
       throw Exception('Failed to update series: $e');
     }
@@ -314,27 +416,78 @@ class CreatorRepository {
     String? accessToken,
   }) async {
     try {
-      final response = await _dio.put(
-        '/api/content/series/$seriesId/status',
-        data: SeriesUpdateRequest(status: status).toJson(),
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+
+      final resp = await _dio.put(
+        'api/content/series/$seriesId/status',
+        data: {
+          'status': status,
+        },
         options: Options(
           headers: {
-            if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
           },
         ),
       );
-      if (response.statusCode != 200) {
-        throw Exception('Failed to update series status');
+
+      if (resp.statusCode == 200) {
+        final data = resp.data;
+        if (data is Map && data['message'] != null) {
+          return; // Success
+        }
+        throw Exception('Unexpected response format');
       }
+      final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to update series status';
+      throw Exception(msg.toString());
+    } on DioException catch (e) {
+      throw _handleError(e);
     } catch (e) {
       throw Exception('Failed to update series status: $e');
     }
   }
 
-  Future<GetUploadUrlResponse> getUploadUrl({
+  Future<Map<String, dynamic>> getEpisodeManifest({
+    required String episodeId,
+    String? accessToken,
+  }) async {
+    try {
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _dio.options.headers['Authorization'] = 'Bearer $accessToken';
+      }
+
+      final resp = await _dio.get(
+        'api/episodes/$episodeId/manifest',
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (resp.statusCode == 200) {
+        final data = resp.data;
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data as Map);
+          return map;
+        }
+        throw Exception('Unexpected response format');
+      }
+      final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to get episode manifest';
+      throw Exception(msg.toString());
+    } on DioException catch (e) {
+      throw _handleError(e);
+    } catch (e) {
+      throw Exception('Failed to get episode manifest: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getUploadUrl({
     required String fileName,
     required String contentType,
     required int sizeBytes,
+    Map<String, dynamic>? metadata,
     String? accessToken,
   }) async {
     try {
@@ -347,18 +500,19 @@ class CreatorRepository {
         data: {
           'filename': fileName,
           'content_type': contentType,
-          'size_bytes': sizeBytes
+          'size_bytes': sizeBytes,
+          if (metadata != null) 'metadata': metadata,
         },
         options: Options(headers: {
           'Content-Type': 'application/json',
         }),
       );
 
-      if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) {
+      if (resp.statusCode == 200) {
         final data = resp.data;
         if (data is Map) {
           final map = Map<String, dynamic>.from(data as Map);
-          return _parseGetUploadUrlResponse(map);
+          return map;
         }
         throw Exception('Unexpected response format');
       }
@@ -371,9 +525,9 @@ class CreatorRepository {
     }
   }
 
-  Future<void> notifyUploadComplete({
+  Future<Map<String, dynamic>> notifyUploadComplete({
     required String uploadId,
-    required String fileUrl,
+    required String s3Path,
     required int sizeBytes,
     String? accessToken,
   }) async {
@@ -385,16 +539,21 @@ class CreatorRepository {
       final resp = await _dio.post(
         'api/content/uploads/$uploadId/notify',
         data: {
-          's3_path': fileUrl,
-          'size_bytes': sizeBytes
+          's3_path': s3Path,
+          'size_bytes': sizeBytes,
         },
         options: Options(headers: {
           'Content-Type': 'application/json',
         }),
       );
 
-      if (resp.statusCode != null && resp.statusCode! >= 200 && resp.statusCode! < 300) {
-        return; // Success
+      if (resp.statusCode == 202) {
+        final data = resp.data;
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data as Map);
+          return map;
+        }
+        throw Exception('Unexpected response format');
       }
       final msg = resp.data is Map && resp.data['message'] != null ? resp.data['message'] : 'Failed to notify upload complete';
       throw Exception(msg.toString());
@@ -404,6 +563,7 @@ class CreatorRepository {
       throw Exception('Failed to notify upload complete: $e');
     }
   }
+
 
   Future<void> onboardCreator({
     required String displayName,
@@ -586,15 +746,6 @@ class CreatorRepository {
     }
   }
 
-  Future<String?> _getAccessToken() async {
-    try {
-      final authState = await _apiClient.getUserProfile();
-      return authState.accessToken;
-    } catch (e) {
-      return null;
-    }
-  }
-
   Exception _handleError(DioException e) {
     String _msg(String fallback) {
       final data = e.response?.data;
@@ -690,12 +841,10 @@ class CreatorRepository {
 
   CreatorDashboardResponse _parseCreatorDashboard(Map<String, dynamic> json) {
     return CreatorDashboardResponse(
-      views: _asInt(json['total_views']),
-      watchTimeSeconds: _asInt(json['watch_time_seconds'] ?? 0),
-      earnings: _asDouble(json['total_revenue'] ?? 0.0),
-      totalEpisodes: _asInt(json['total_episodes'] ?? 0),
-      totalSeries: _asInt(json['total_series'] ?? 0),
-      averageRating: _asDouble(json['average_rating'] ?? 0.0),
+      views: _asInt(json['views']),
+      watchTimeSeconds: _asInt(json['watch_time_seconds']),
+      earnings: _asDouble(json['earnings']),
+      followerCount: _asInt(json['follower_count']),
     );
   }
 
