@@ -57,21 +57,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/creator/series',
         name: 'series-management',
-        builder: (context, state) => const SeriesManagementScreen(),
+        builder: (context, state) => const SeriesManagementScreen(seriesId: ''),
       ),
       
       // Profile & Settings
       GoRoute(
         path: '/profile',
         name: 'profile',
-        builder: (context, state) => const ProfileScreen(),
+        builder: (context, state) => const UserProfileScreen(),
       ),
       
       // Subscription & Payments
       GoRoute(
         path: '/subscription',
         name: 'subscription',
-        builder: (context, state) => const SubscriptionScreen(),
+        builder: (context, state) => const SubscriptionScreen(seriesId: ''),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

@@ -1,5 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:streamshort/features/auth/data/models/auth_models.dart';
+import 'package:streamshort/core/api/api_client.dart';
+import 'package:streamshort/core/providers.dart';
+import '../../data/repositories/profile_repository.dart';
+
+final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
+  final apiClient = ref.read(apiClientProvider);
+  return ProfileRepository(apiClient);
+});
 
 final profileProvider = StateNotifierProvider<ProfileNotifier, AsyncValue<User?>>((ref) {
   return ProfileNotifier();

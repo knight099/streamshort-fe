@@ -64,7 +64,7 @@ class SeriesCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          series.title,
+                          series.title ?? 'Untitled',
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -96,7 +96,7 @@ class SeriesCard extends StatelessWidget {
                   
                   // Synopsis
                   Text(
-                    series.synopsis,
+                    series.synopsis ?? 'No description available',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -117,7 +117,7 @@ class SeriesCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          series.language.toUpperCase(),
+                          (series.language ?? 'EN').toUpperCase(),
                           style: TextStyle(
                             color: AppTheme.primaryColor,
                             fontWeight: FontWeight.bold,
@@ -132,7 +132,7 @@ class SeriesCard extends StatelessWidget {
                       Expanded(
                         child: Wrap(
                           spacing: 4,
-                          children: series.categoryTags.take(2).map((tag) {
+                          children: (series.categoryTags ?? []).take(2).map((tag) {
                             return Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
